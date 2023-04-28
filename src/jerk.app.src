@@ -1,0 +1,15 @@
+{application, jerk,
+ [{description, "An application mapping between Erlang terms and JSON objects"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {jerk_app, []}},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["BSD-3-Clause"]},
+  {links, []}
+ ]}.
