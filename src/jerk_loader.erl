@@ -152,7 +152,7 @@ load_definition(ID, Object, Schemas) ->
 load_definitions(BaseID, Definitions, Schemas) ->
     maps:fold(
       fun (ID, Value, Acc) ->
-              load_definition(<<BaseID/binary, ID/binary>>, Value, Acc)
+              load_definition(<<BaseID/binary, "/", ID/binary>>, Value, Acc)
       end,
       Schemas, Definitions).
 

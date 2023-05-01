@@ -72,3 +72,41 @@ enum_constraint_test() ->
       {[{<<"bar">>, string, [{enum, EnumValues}]}], [], false}}] =
         jerk_loader:load_json(Schema),
     ?assertEqual(lists:sort(ExpectedEnumValues), lists:sort(EnumValues)).
+
+definitions_test_() ->
+    {setup,
+     fun () ->
+             Schema =
+                 jiffy:encode(
+                   #{<<"$id">> => <<"foo">>,
+                     <<"type">> => <<"object">>,
+                     <<"definitions">> =>
+                         #{<<"bar">> => #{<<"type">> => <<"integer">>},
+                           <<"baz">> =>
+                               #{<<"type">> => <<"object">>,
+                                 <<"properties">> =>
+                                     #{<<"a">> =>
+                                           #{<<"type">> => <<"boolean">>}}}}}),
+             ?debugVal(jerk_loader:load_json(Schema))
+     end,
+     {with,
+      [fun (Definition) ->
+               ?assertEqual(
+                  {<<"foo/definitions/bar">>, integer, []},
+                  lists:keyfind(<<"foo/definitions/bar">>, 1, Definition))
+       end,
+       fun (Definition) ->
+               ?assertMatch(
+                  {<<"foo/definitions/baz">>, object, {[_], [], false}},
+                  lists:keyfind(<<"foo/definitions/baz">>, 1, Definition))
+       end,
+       fun (Definition) ->
+               {_, _, {BazProperties, _, _}} =
+                   lists:keyfind(<<"foo/definitions/baz">>, 1, Definition),
+               ?assertEqual([{<<"a">>, boolean, []}], BazProperties)
+       end,
+       fun (Definition) ->
+               ?assertEqual(
+                  {<<"foo">>, object, {[], [], false}},
+                  lists:keyfind(<<"foo">>, 1, Definition))
+       end]}}.
