@@ -75,20 +75,7 @@ enum_constraint_test() ->
 
 definitions_test_() ->
     {setup,
-     fun () ->
-             Schema =
-                 jiffy:encode(
-                   #{<<"$id">> => <<"foo">>,
-                     <<"type">> => <<"object">>,
-                     <<"definitions">> =>
-                         #{<<"bar">> => #{<<"type">> => <<"integer">>},
-                           <<"baz">> =>
-                               #{<<"type">> => <<"object">>,
-                                 <<"properties">> =>
-                                     #{<<"a">> =>
-                                           #{<<"type">> => <<"boolean">>}}}}}),
-             ?debugVal(jerk_loader:load_json(Schema))
-     end,
+     fun nested_schema/0,
      {with,
       [fun (Definition) ->
                ?assertEqual(
@@ -109,4 +96,47 @@ definitions_test_() ->
                ?assertEqual(
                   {<<"foo">>, object, {[], [], false}},
                   lists:keyfind(<<"foo">>, 1, Definition))
+       end]}}.
+
+nested_schema() ->
+    Schema =
+        jiffy:encode(
+          #{<<"$id">> => <<"foo">>,
+            <<"type">> => <<"object">>,
+            <<"definitions">> =>
+                #{<<"bar">> => #{<<"type">> => <<"integer">>},
+                  <<"baz">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> =>
+                            #{<<"a">> =>
+                                  #{<<"type">> => <<"boolean">>}}}}}),
+    jerk_loader:load_json(Schema).
+
+schema_property_reference() ->
+    Schema =
+        jiffy:encode(
+          #{<<"$id">> => <<"foo">>,
+            <<"type">> => <<"object">>,
+            <<"definitions">> =>
+                #{<<"bar">> => #{<<"type">> => <<"integer">>},
+                  <<"baz">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> =>
+                            #{<<"a">> =>
+                                  #{<<"type">> => <<"boolean">>}}}},
+            <<"properties">> =>
+                #{<<"p1">> => #{<<"$ref">> => <<"#/definitions/bar">>},
+                  <<"p2">> => #{<<"$ref">> => <<"#/definitions/baz">>}}}),
+    jerk_loader:load_json(Schema).
+
+definition_reference_test_() ->
+    {setup, fun schema_property_reference/0,
+     {with,
+      [fun (Definition) ->
+               {<<"foo">>, object, {Properties, [], false}} =
+                   lists:keyfind(<<"foo">>, 1, Definition),
+               ?assertEqual({<<"p1">>, ref, <<"#/definitions/bar">>},
+                            lists:keyfind(<<"p1">>, 1, Properties)),
+               ?assertEqual({<<"p2">>, ref, <<"#/definitions/baz">>},
+                            lists:keyfind(<<"p2">>, 1, Properties))
        end]}}.

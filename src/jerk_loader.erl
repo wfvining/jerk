@@ -137,17 +137,23 @@ array_constraints(Object) ->
 load_definition(ID, #{<<"type">> := <<"object">>} = Object, Schemas)  ->
     {ObjectDesctription, NewSchemas} = load_object(ID, Object, Schemas),
     [new_record(object, ID, ObjectDesctription) | NewSchemas];
-load_definition(ID, Object, Schemas) ->
-    Record =
-        case maps:get(<<"type">>, Object, notype) of
-            <<"string">> -> new_record(string, ID, string_constraints(Object));
-            <<"number">> -> new_record(number, ID, number_constraints(Object));
-            <<"integer">> -> new_record(integer, ID, number_constraints(Object));
-            <<"boolean">> -> new_record(boolean, ID, []);
-            <<"array">> -> new_record(array, ID, array_constraints(Object));
-            <<"null">> -> new_record(null, ID, [])
-        end,
-    [Record | Schemas].
+load_definition(ID, #{<<"type">> := <<"string">>} = Object, Schemas) ->
+    [new_record(string, ID, string_constraints(Object)) | Schemas];
+load_definition(ID, #{<<"type">> := <<"number">>} = Object, Schemas) ->
+    [new_record(number, ID, number_constraints(Object)) | Schemas];
+load_definition(ID, #{<<"type">> := <<"integer">>} = Object, Schemas) ->
+    [new_record(integer, ID, number_constraints(Object)) | Schemas];
+load_definition(ID, #{<<"type">> := <<"boolean">>} = Object, Schemas) ->
+    [new_record(boolean, ID, []) | Schemas];
+load_definition(ID, #{<<"type">> := <<"array">>} = Object, Schemas) ->
+    [new_record(array, ID, array_constraints(Object)) | Schemas];
+load_definition(ID, #{<<"type">> := <<"null">>} = Object, Schemas) ->
+    [new_record(null, ID, []) | Schemas];
+load_definition(_, #{<<"type">> := _}, _) ->
+    error(badarg);
+load_definition(ID, #{<<"$ref">> := Reference}, Schemas)
+  when is_binary(Reference) ->
+    [new_record(ref, ID, Reference) | Schemas].
 
 load_definitions(BaseID, Definitions, Schemas) ->
     maps:fold(
