@@ -37,11 +37,8 @@ load_length_constraints(Object) ->
     [length_constraint(Sense, Value)
      || {Sense, Value} <- [{min, Min}, {max, Max}], Value =/= undefined].
 
-enum_constraint(Values) ->
-    {enum, Values}.
-
 load_enum_constraint(#{<<"enum">> := Enum}) when is_list(Enum) ->
-    [enum_constraint(Enum)];
+    [jerk_constraint:enum(Enum)];
 load_enum_constraint(_) ->
     [].
 
@@ -49,22 +46,17 @@ string_constraints(Object) ->
     lists:flatten(
       [load_length_constraints(Object), load_enum_constraint(Object)]).
 
-range_constraint(UbLb, Exclusive, N) when is_number(N) ->
-    {UbLb, {Exclusive, N}};
-range_constraint(_, _, _) ->
-    error(badarg).
-
 load_ub_constraint(#{<<"maximum">> := Max}) ->
-    [range_constraint(ub, inclusive, Max)];
+    [jerk_constraint:range(ub, inclusive, Max)];
 load_ub_constraint(#{<<"exclusiveMaximum">> := Max}) ->
-    [range_constraint(ub, exclusive, Max)];
+    [jerk_constraint:range(ub, exclusive, Max)];
 load_ub_constraint(_) ->
     [].
 
 load_lb_constraint(#{<<"minimum">> := Min}) ->
-    [range_constraint(lb, inclusive, Min)];
+    [jerk_constraint:range(lb, inclusive, Min)];
 load_lb_constraint(#{<<"exclusiveMinimum">> := Min}) ->
-    [range_constraint(lb, exclusive, Min)];
+    [jerk_constraint:range(lb, exclusive, Min)];
 load_lb_constraint(_) ->
     [].
 
@@ -73,11 +65,8 @@ load_range_constraints(Object) ->
     LB = load_lb_constraint(Object),
     UB ++ LB.
 
-multiple_constraint(Divisor) when is_number(Divisor) ->
-    {multipleof, Divisor}.
-
 load_multiples_constraints(#{<<"multipleOf">> := Divisor}) ->
-    [multiple_constraint(Divisor)];
+    [jerk_constraint:multiple(Divisor)];
 load_multiples_constraints(_) ->
     [].
 
@@ -85,27 +74,20 @@ number_constraints(Object) ->
     lists:flatten(
       [load_range_constraints(Object), load_multiples_constraints(Object)]).
 
-items_constraint(Sense, Value)
-  when is_integer(Value) andalso Value >= 0 ->
-    {items, {Sense, Value}}.
-
 load_items_constraints(Object) ->
     Max = maps:get(<<"maxItems">>, Object, undefined),
     Min = maps:get(<<"minItems">>, Object, undefined),
-    [items_constraint(Sense, Value) ||
+    [jerk_constraint:items(Sense, Value) ||
         {Sense, Value} <- [{min, Min}, {max, Max}], Value =/= undefined].
 
 load_unique_constraint(#{<<"uniqueItems">> := true}) ->
-    [{unique, true}];
+    [jerk_constraint:unique()];
 load_unique_constraint(_) ->
     [].
 
 contains_count_constraint(Sense, Value)
   when is_integer(Value) andalso Value >= 0->
     {count, {Sense, Value}}.
-
-contains_constraint(Definition) ->
-    {contains, Definition}.
 
 load_contains_constraints(#{<<"contains">> := Schema}) ->
     Contains = load_definition(<<"contained">>, Schema, []),
@@ -123,7 +105,7 @@ load_contains_constraints(#{<<"contains">> := Schema}) ->
            true ->
                 []
         end,
-    ContainsConstraint = contains_constraint(Contains),
+    ContainsConstraint = jerk_constraint:contains(Contains),
     [ContainsConstraint | MinCountConstraint ++ MaxCountConstraint];
 load_contains_constraints(_) ->
     [].
