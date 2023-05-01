@@ -58,3 +58,17 @@ number_constraint_test_() ->
     [[?_assertMatch([{<<"bar">>, number, _}], Property) || Property <- Properties],
      [?_assertEqual(Constraint, Result)
       || {Constraint, Result} <- lists:zip(ExpectedConstraints, LoadedConstraints)]].
+
+enum_constraint_test() ->
+    ExpectedEnumValues = [<<"Foo">>, <<"Bar">>],
+    Schema = jiffy:encode(
+                #{<<"$id">> => <<"foo">>,
+                  <<"type">> => <<"object">>,
+                  <<"properties">> =>
+                      #{<<"bar">> =>
+                            #{<<"type">> => <<"string">>,
+                              <<"enum">> => ExpectedEnumValues}}}),
+    [{<<"foo">>, object,
+      {[{<<"bar">>, string, [{enum, EnumValues}]}], [], false}}] =
+        jerk_loader:load_json(Schema),
+    ?assertEqual(lists:sort(ExpectedEnumValues), lists:sort(EnumValues)).
