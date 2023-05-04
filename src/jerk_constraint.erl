@@ -8,6 +8,8 @@
          range/3,
          unique/0]).
 
+-export([validate/2]).
+
 -export_type([sense/0,
               bound/0,
               contains/1,
@@ -28,6 +30,14 @@
 -type multipleof() :: {multipleof, number()}.
 -type range() :: {bound(), {inclusive | exclusive, number()}}.
 -type unique() :: {unique, boolean()}.
+
+-type constraint() :: contains(_)
+                    | enum(_)
+                    | items()
+                    | length()
+                    | multipleof()
+                    | range()
+                    | unique().
 
 -spec contains(Definition) -> contains(Definition).
 contains(Definition) ->
@@ -75,3 +85,13 @@ range(_, _, _) ->
 -spec unique() -> unique().
 unique() ->
     {unique, true}.
+
+-spec validate(Constraint :: constraint(), Value :: any()) -> boolean().
+validate({ub, {inclusive, N}}, Value) ->
+    Value =< N;
+validate({ub, {exclusive, N}}, Value) ->
+    Value < N;
+validate({lb, {inclusive, N}}, Value) ->
+    Value >= N;
+validate({lb, {exclusive, N}}, Value) ->
+    Value > N.
