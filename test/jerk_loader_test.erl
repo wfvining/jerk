@@ -76,27 +76,26 @@ enum_constraint_test() ->
 definitions_test_() ->
     {setup,
      fun nested_schema/0,
-     {with,
-      [fun (Definition) ->
-               ?assertEqual(
-                  {<<"foo/definitions/bar">>, integer, []},
-                  lists:keyfind(<<"foo/definitions/bar">>, 1, Definition))
-       end,
-       fun (Definition) ->
-               ?assertMatch(
-                  {<<"foo/definitions/baz">>, object, {[_], [], false}},
-                  lists:keyfind(<<"foo/definitions/baz">>, 1, Definition))
-       end,
-       fun (Definition) ->
-               {_, _, {BazProperties, _, _}} =
-                   lists:keyfind(<<"foo/definitions/baz">>, 1, Definition),
-               ?assertEqual([{<<"a">>, boolean, []}], BazProperties)
-       end,
-       fun (Definition) ->
-               ?assertEqual(
-                  {<<"foo">>, object, {[], [], false}},
-                  lists:keyfind(<<"foo">>, 1, Definition))
-       end]}}.
+     fun(Definition) ->
+             [?_test(
+                 ?assertEqual(
+                    {<<"foo/definitions/bar">>, integer, []},
+                    lists:keyfind(<<"foo/definitions/bar">>, 1, Definition))),
+              ?_test(
+                 ?assertMatch(
+                    {<<"foo/definitions/baz">>, object, {[_], [], false}},
+                    lists:keyfind(<<"foo/definitions/baz">>, 1, Definition))),
+              ?_test(
+                 begin
+                     {_, _, {BazProperties, _, _}} =
+                         lists:keyfind(<<"foo/definitions/baz">>, 1, Definition),
+                     ?assertEqual([{<<"a">>, boolean, []}], BazProperties)
+                 end),
+              ?_test(
+                 ?assertEqual(
+                    {<<"foo">>, object, {[], [], false}},
+                    lists:keyfind(<<"foo">>, 1, Definition)))]
+     end}.
 
 nested_schema() ->
     Schema =
