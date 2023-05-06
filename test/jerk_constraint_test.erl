@@ -92,3 +92,24 @@ unique_constraint_test_() ->
                                                            #{<<"foo">> => [1]}]))),
       ?_test(?assert(jerk_constraint:validate(Unique, [#{<<"foo">> => [1]},
                                                        #{<<"foo">> => [2]}])))]}.
+
+length_constraint_test_() ->
+    MinLenConstraint = jerk_constraint:length(min, 2),
+    MaxLenConstraint = jerk_constraint:length(max, 4),
+    Strings = [{<<""/utf8>>, 0}, {<<"a"/utf8>>, 1}, {<<"ab"/utf8>>, 2},
+               {<<"abc"/utf8>>, 3}, {<<"abcd"/utf8>>, 4},
+               {<<"abcde"/utf8>>, 5}, {<<"α"/utf8>>, 1},
+               {<<"αβ"/utf8>>, 2}, {<<"αβα"/utf8>>, 3},
+               {<<"αβαβ"/utf8>>, 4}, {<<"αβαβα"/utf8>>, 5}],
+    [{"minimum length constraints",
+      {inparallel,
+       [?_test(
+           ?assertEqual(Len >= 2,
+                        jerk_constraint:validate(MinLenConstraint, Str)))
+        || {Str, Len} <- Strings]}},
+     {"maximum length constraints",
+      {inparallel,
+       [?_test(
+          ?assertEqual(Len =< 4,
+                       jerk_constraint:validate(MaxLenConstraint, Str)))
+        || {Str, Len} <- Strings]}}].

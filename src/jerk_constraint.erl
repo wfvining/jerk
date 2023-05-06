@@ -112,4 +112,9 @@ validate({items, {max, N}}, L) ->
     length(L) =< N;
 
 validate({unique, true}, L) ->
-    length(lists:uniq(L)) =:= length(L).
+    length(lists:uniq(L)) =:= length(L);
+
+validate({length, {min, N}}, Str) ->
+    string:length(Str) >= N;
+validate({length, {max, N}}, Str) ->
+    string:length(Str) =< N.
