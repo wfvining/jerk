@@ -110,3 +110,7 @@ validate({length, {min, N}}, L) ->
     length(L) >= N;
 validate({length, {max, N}}, L) ->
     length(L) =< N.
+    length(L) =< N;
+
+validate({unique, true}, L) ->
+    length(lists:uniq(L)) =:= length(L).

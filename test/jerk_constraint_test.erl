@@ -76,3 +76,19 @@ length_constraint_test_() ->
           ?assertEqual(length(L) >= 1,
                        jerk_constraint:validate(MinLenConstraint, L)))
        || L <- [[], [1], [1, 2], [1, 2, 3], [1, 2, 3, 4]]]}].
+
+unique_constraint_test_() ->
+    Unique = jerk_constraint:unique(),
+    {inparallel,
+     [?_test(?assert(jerk_constraint:validate(Unique, []))),
+      ?_test(?assert(jerk_constraint:validate(Unique, [1]))),
+      ?_test(?assert(jerk_constraint:validate(Unique, [1, 2]))),
+      ?_test(?assert(jerk_constraint:validate(Unique, [1, 2.3, <<"foo">>]))),
+      ?_test(?assert(jerk_constraint:validate(Unique, [<<"foo">>, <<"bar">>]))),
+      ?_test(?assert(not jerk_constraint:validate(Unique, [<<"foo">>, <<"foo">>]))),
+      ?_test(?assert(jerk_constraint:validate(Unique, [1, 1.0]))),
+      ?_test(?assert(not jerk_constraint:validate(Unique, [1, 2, 1]))),
+      ?_test(?assert(not jerk_constraint:validate(Unique, [#{<<"foo">> => [1]},
+                                                           #{<<"foo">> => [1]}]))),
+      ?_test(?assert(jerk_constraint:validate(Unique, [#{<<"foo">> => [1]},
+                                                       #{<<"foo">> => [2]}])))]}.
