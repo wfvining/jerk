@@ -6,11 +6,8 @@ load_json(Schema) ->
     JSONTerm = jiffy:decode(Schema, [return_maps]),
     load(JSONTerm, []).
 
-load(#{<<"$id">> := SchemaID, <<"type">> := <<"object">>} = Schema, Schemas) ->
-    % properties, additionalProperties, required
-    {ObjectDesctription, NewSchemas} =
-        load_object(SchemaID, Schema, Schemas),
-    [new_record(object, SchemaID, ObjectDesctription) | NewSchemas].
+load(#{<<"$id">> := SchemaID} = Schema, Schemas) ->
+    load_definition(SchemaID, Schema, Schemas).
 
 load_object(ID, Object, Schemas) ->
     Properties =
