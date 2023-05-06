@@ -39,6 +39,23 @@
                     | range()
                     | unique().
 
+-if(?OTP_RELEASE >= 25).
+-define(uniq(L), lists:uniq(L)).
+-else.
+-define(uniq(L), uniq(L)).
+uniq(L) ->
+    uniq(L, []).
+uniq([], Result) ->
+    Result;
+uniq([H|T], Result) ->
+    case lists:member(H, Result) of
+        true ->
+            uniq(T, Result);
+        false ->
+            uniq(T, [H|Result])
+    end.
+-endif.
+
 -spec contains(Definition) -> contains(Definition).
 contains(Definition) ->
     {contains, Definition}.
@@ -112,7 +129,7 @@ validate({items, {max, N}}, L) ->
     length(L) =< N;
 
 validate({unique, true}, L) ->
-    length(lists:uniq(L)) =:= length(L);
+    length(?uniq(L)) =:= length(L);
 
 validate({length, {min, N}}, Str) ->
     string:length(Str) >= N;
