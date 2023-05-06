@@ -62,3 +62,17 @@ enum_constraint_test_() ->
        [?_test(?assert(not jerk_constraint:validate(
                              Enum, Value)))
         || Value <- [<<"Foo1">>, 1, null, false, true, <<"">>, 1.2]]}}].
+
+length_constraint_test_() ->
+    MaxLenConstraint = jerk_constraint:length(max, 3),
+    MinLenConstraint = jerk_constraint:length(min, 1),
+    [{"maximum length constraints",
+      [?_test(
+          ?assertEqual(length(L) =< 3,
+                       jerk_constraint:validate(MaxLenConstraint, L)))
+       || L <- [[], [1], [1, 2], [1, 2, 3], [1, 2, 3, 4]]]},
+     {"minimum length constraints",
+      [?_test(
+          ?assertEqual(length(L) >= 1,
+                       jerk_constraint:validate(MinLenConstraint, L)))
+       || L <- [[], [1], [1, 2], [1, 2, 3], [1, 2, 3, 4]]]}].

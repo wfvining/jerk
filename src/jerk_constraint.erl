@@ -104,4 +104,9 @@ validate({multipleof, N}, Value) ->
     math:fmod(Value, N) =:= 0.0;
 
 validate({enum, Values}, Value) ->
-    lists:member(Value, Values).
+    lists:member(Value, Values);
+
+validate({length, {min, N}}, L) ->
+    length(L) >= N;
+validate({length, {max, N}}, L) ->
+    length(L) =< N.
