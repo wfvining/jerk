@@ -152,4 +152,30 @@ validate({unique, true}, L) ->
 validate({length, {min, N}}, Str) ->
     string:length(Str) >= N;
 validate({length, {max, N}}, Str) ->
-    string:length(Str) =< N.
+    string:length(Str) =< N;
+
+validate({allowed, {Type, Constraints}}, L) when is_list(L) ->
+    lists:foldr(
+      fun (X, Acc) ->
+              Acc andalso check_type(Type, X)
+                  andalso check_constraints(X, Constraints)
+      end,
+      true,
+      L).
+
+check_type(integer, Value) -> is_integer(Value);
+check_type(number, Value) -> is_number(Value);
+check_type(string, Value) -> is_binary(Value);
+check_type(null, null) -> true;
+check_type(boolean, Value) -> is_boolean(Value);
+check_type(object, Value) -> is_map(Value);
+check_type(array, Value) -> is_list(Value);
+check_type(_, _) -> false.
+
+check_constraints(Value, Constraints) ->
+    lists:foldr(
+      fun (Constraint, Acc) ->
+              Acc andalso validate(Constraint, Value)
+      end,
+      true,
+      Constraints).
