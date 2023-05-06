@@ -39,4 +39,12 @@ number_multipleof_constraint_test_() ->
         || X <- [-3, -21, 9]],
        [?_assert(not jerk_constraint:validate(
                        jerk_constraint:multiple(3.2), X * 2.3))
-        || X <- [-3, -21, 9]]]}}.
+        || X <- [-3, -21, 9]],
+       [?_assert(jerk_constraint:validate(
+                   jerk_constraint:multiple(3.0), 9)),
+        ?_assert(jerk_constraint:validate(
+                   jerk_constraint:multiple(3), 9.0)),
+        ?_assert(not jerk_constraint:validate(
+                       jerk_constraint:multiple(3), 9.1)),
+        ?_assert(not jerk_constraint:validate(
+                       jerk_constraint:multiple(3.1), 9))]]}}.
