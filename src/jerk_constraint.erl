@@ -2,6 +2,7 @@
 
 -export([contains/1,
          enum/1,
+         item_count/2,
          items/2,
          length/2,
          multiple/1,
@@ -12,20 +13,32 @@
 
 -export_type([sense/0,
               bound/0,
+              type/0,
               contains/1,
               enum/1,
+              item_count/0,
               items/0,
               length/0,
               multipleof/0,
               range/0,
               unique/0]).
 
+-type type() :: object
+              | integer
+              | number
+              | string
+              | array
+              | boolean
+              | null
+              | ref.
+
 -type sense() :: min | max.
 -type bound() :: lb | ub.
 
 -type contains(D) :: {contains, D}.
+-type items() :: {allowed, {type(), [constraint()]}}.
+-type item_count() :: {items, {sense(), non_neg_integer()}}.
 -type enum(Values) :: {enum, Values}.
--type items() :: {items, {sense(), non_neg_integer()}}.
 -type length() :: {length, {sense(), non_neg_integer()}}.
 -type multipleof() :: {multipleof, number()}.
 -type range() :: {bound(), {inclusive | exclusive, number()}}.
@@ -34,6 +47,7 @@
 -type constraint() :: contains(_)
                     | enum(_)
                     | items()
+                    | item_count()
                     | length()
                     | multipleof()
                     | range()
@@ -66,12 +80,16 @@ enum(Values) when is_list(Values) ->
 enum(_) ->
     error(badarg).
 
--spec items(Sense :: sense(), Value :: non_neg_integer()) -> items().
-items(Sense, Value)
+-spec items(Type :: type(), Constraints :: [constraint()]) -> items().
+items(Type, Constraints) ->
+    {allowed, {Type, Constraints}}.
+
+-spec item_count(Sense :: sense(), Value :: non_neg_integer()) -> item_count().
+item_count(Sense, Value)
   when (is_integer(Value) andalso Value >= 0),
        ((Sense =:= min) or (Sense =:= max)) ->
     {items, {Sense, Value}};
-items(_, _) ->
+item_count(_, _) ->
     error(badarg).
 
 -spec length(Sense :: sense(), Value :: non_neg_integer()) -> length().

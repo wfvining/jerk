@@ -74,8 +74,16 @@ number_constraints(Object) ->
 load_items_constraints(Object) ->
     Max = maps:get(<<"maxItems">>, Object, undefined),
     Min = maps:get(<<"minItems">>, Object, undefined),
-    [jerk_constraint:items(Sense, Value) ||
-        {Sense, Value} <- [{min, Min}, {max, Max}], Value =/= undefined].
+    Allowed = case maps:get(<<"items">>, Object, undefined) of
+                  undefined -> [];
+                  ItemSchema ->
+                      [{<<"">>, Type, Constraints}] =
+                          load_definition(<<"">>, ItemSchema, []),
+                      [jerk_constraint:items(Type, Constraints)]
+              end,
+    [jerk_constraint:item_count(Sense, Value)
+     || {Sense, Value} <- [{min, Min}, {max, Max}], Value =/= undefined]
+        ++ Allowed.
 
 load_unique_constraint(#{<<"uniqueItems">> := true}) ->
     [jerk_constraint:unique()];
@@ -108,10 +116,10 @@ load_contains_constraints(_) ->
     [].
 
 array_constraints(Object) ->
-    ArrayLength = load_items_constraints(Object),
+    Items = load_items_constraints(Object),
     Contains = load_contains_constraints(Object),
     Unique = load_unique_constraint(Object),
-    ArrayLength ++ Contains ++ Unique.
+    Items ++ Contains ++ Unique.
 
 load_definition(ID, #{<<"type">> := <<"object">>} = Object, Schemas)  ->
     {ObjectDesctription, NewSchemas} = load_object(ID, Object, Schemas),

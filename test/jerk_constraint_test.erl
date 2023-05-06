@@ -63,9 +63,9 @@ enum_constraint_test_() ->
                              Enum, Value)))
         || Value <- [<<"Foo1">>, 1, null, false, true, <<"">>, 1.2]]}}].
 
-items_constraint_test_() ->
-    MaxItemsConstraint = jerk_constraint:items(max, 3),
-    MinItemsConstraint = jerk_constraint:items(min, 1),
+item_count_constraint_test_() ->
+    MaxItemsConstraint = jerk_constraint:item_count(max, 3),
+    MinItemsConstraint = jerk_constraint:item_count(min, 1),
     [{"maximum items constraints",
       [?_test(
           ?assertEqual(length(L) =< 3,

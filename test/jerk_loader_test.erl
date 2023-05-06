@@ -139,3 +139,59 @@ definition_reference_test_() ->
                ?assertEqual({<<"p2">>, ref, <<"#/definitions/baz">>},
                             lists:keyfind(<<"p2">>, 1, Properties))
        end]}}.
+
+array_constraint_test_() ->
+    [{"array item constraints",
+      [fun item_value_constraint/0, fun item_count_constraint/0]},
+     {"array unique constraints",
+      array_unique_constraint()}].
+
+item_value_constraint() ->
+    Schema = jiffy:encode(
+               #{<<"$id">> => <<"foo">>,
+                 <<"type">> => <<"array">>,
+                 <<"items">> => #{<<"type">> => <<"integer">>,
+                                  <<"minimum">> => 0,
+                                  <<"exclusiveMaximum">> => 3}}),
+    ?assertMatch(
+       [{<<"foo">>, array,
+         [{allowed, {integer, [_, _]}}]}],
+       jerk_loader:load_json(Schema)),
+    [{<<"foo">>, array,
+      [{allowed, {integer, [_, _] = Constraints}}]}] =
+        jerk_loader:load_json(Schema),
+    ?assert(lists:member({lb, {inclusive, 0}}, Constraints)),
+    ?assert(lists:member({ub, {exclusive, 3}}, Constraints)).
+
+item_count_constraint() ->
+    Schema = jiffy:encode(
+               #{<<"$id">> => <<"foo">>,
+                 <<"type">> => <<"array">>,
+                 <<"minItems">> => 2,
+                 <<"maxItems">> => 3}),
+    [{<<"foo">>, array, Constraints}] = jerk_loader:load_json(Schema),
+    ?assert(lists:member({items, {min, 2}}, Constraints)),
+    ?assert(lists:member({items, {max, 3}}, Constraints)),
+    ?assertEqual([], Constraints -- [{items, {min, 2}}, {items, {max, 3}}]).
+
+array_unique_constraint() ->
+    [?_test(
+        begin
+            Schema = jiffy:encode(
+                       #{<<"$id">> => <<"foo">>,
+                         <<"type">> => <<"array">>,
+                         <<"uniqueItems">> => true}),
+            ?assertEqual(
+               [{<<"foo">>, array, [{unique, true}]}],
+               jerk_loader:load_json(Schema))
+        end),
+     ?_test(
+        begin
+            Schema = jiffy:encode(
+                       #{<<"$id">>  => <<"foo">>,
+                         <<"type">> => <<"array">>,
+                         <<"uniqueItems">> => false}),
+            ?assertEqual(
+               [{<<"foo">>, array, []}],
+               jerk_loader:load_json(Schema))
+        end)].
