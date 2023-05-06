@@ -106,10 +106,9 @@ validate({multipleof, N}, Value) ->
 validate({enum, Values}, Value) ->
     lists:member(Value, Values);
 
-validate({length, {min, N}}, L) ->
+validate({items, {min, N}}, L) ->
     length(L) >= N;
-validate({length, {max, N}}, L) ->
-    length(L) =< N.
+validate({items, {max, N}}, L) ->
     length(L) =< N;
 
 validate({unique, true}, L) ->
