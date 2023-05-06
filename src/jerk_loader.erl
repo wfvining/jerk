@@ -130,11 +130,11 @@ load_definition(ID, #{<<"type">> := <<"number">>} = Object, Schemas) ->
     [new_record(number, ID, number_constraints(Object)) | Schemas];
 load_definition(ID, #{<<"type">> := <<"integer">>} = Object, Schemas) ->
     [new_record(integer, ID, number_constraints(Object)) | Schemas];
-load_definition(ID, #{<<"type">> := <<"boolean">>} = Object, Schemas) ->
+load_definition(ID, #{<<"type">> := <<"boolean">>}, Schemas) ->
     [new_record(boolean, ID, []) | Schemas];
 load_definition(ID, #{<<"type">> := <<"array">>} = Object, Schemas) ->
     [new_record(array, ID, array_constraints(Object)) | Schemas];
-load_definition(ID, #{<<"type">> := <<"null">>} = Object, Schemas) ->
+load_definition(ID, #{<<"type">> := <<"null">>}, Schemas) ->
     [new_record(null, ID, []) | Schemas];
 load_definition(_, #{<<"type">> := _}, _) ->
     error(badarg);
