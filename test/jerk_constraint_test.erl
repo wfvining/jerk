@@ -48,3 +48,17 @@ number_multipleof_constraint_test_() ->
                        jerk_constraint:multiple(3), 9.1)),
         ?_assert(not jerk_constraint:validate(
                        jerk_constraint:multiple(3.1), 9))]]}}.
+
+enum_constraint_test_() ->
+    ValidValues = [<<"Foo">>, <<"Bar">>, <<"Baz">>],
+    Enum = jerk_constraint:enum(ValidValues),
+    [{"values in the enum list satisfy the constraint",
+      {inparallel,
+       [?_test(?assert(jerk_constraint:validate(
+                         Enum, Value)))
+        || Value <- ValidValues]}},
+     {"values not in the enum fail to satisfy the constraint",
+      {inparallel,
+       [?_test(?assert(not jerk_constraint:validate(
+                             Enum, Value)))
+        || Value <- [<<"Foo1">>, 1, null, false, true, <<"">>, 1.2]]}}].

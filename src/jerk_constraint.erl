@@ -95,9 +95,13 @@ validate({lb, {inclusive, N}}, Value) ->
     Value >= N;
 validate({lb, {exclusive, N}}, Value) ->
     Value > N;
+
 validate({multipleof, Zero}, Value) when Zero == 0; Zero == 0.0 ->
     Value == 0;
 validate({multipleof, N}, Value) when is_integer(N), is_integer(Value) ->
     0 =:= Value rem N;
 validate({multipleof, N}, Value) ->
-    math:fmod(Value, N) =:= 0.0.
+    math:fmod(Value, N) =:= 0.0;
+
+validate({enum, Values}, Value) ->
+    lists:member(Value, Values).
