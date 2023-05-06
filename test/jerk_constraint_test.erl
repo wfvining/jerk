@@ -18,3 +18,25 @@ number_range_constraint_test_() ->
        || UbLb <- [ub, lb],
           Exclusive <- [exclusive, inclusive],
           N <- [10, 10.5, -10, -10.5]]}}.
+
+number_multipleof_constraint_test_() ->
+    {"test that multiple of works for integers and floats",
+     {inparallel,
+      [[?_assert(jerk_constraint:validate(
+                   jerk_constraint:multiple(0), Zero))
+        || Zero <- [0, 0.0]],
+       [?_assert(not jerk_constraint:validate(
+                       jerk_constraint:multiple(0), NotZero))
+        || NotZero <- [1, -1, -1.2, 0.1]],
+       [?_assert(jerk_constraint:validate(
+                   jerk_constraint:multiple(3), X))
+        || X <- [-3, -21, 9]],
+       [?_assert(not jerk_constraint:validate(
+                       jerk_constraint:multiple(3), X))
+        || X <- [1, 2, 22, -4]],
+       [?_assert(jerk_constraint:validate(
+                   jerk_constraint:multiple(1.5), X * 1.5))
+        || X <- [-3, -21, 9]],
+       [?_assert(not jerk_constraint:validate(
+                       jerk_constraint:multiple(3.2), X * 2.3))
+        || X <- [-3, -21, 9]]]}}.
