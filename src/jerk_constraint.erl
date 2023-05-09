@@ -32,6 +32,8 @@
               | null
               | ref.
 
+-type continue() :: {continue, [{any(), {type(), constraint()}}]}.
+
 -type sense() :: min | max.
 -type bound() :: lb | ub.
 
@@ -52,6 +54,10 @@
                     | multipleof()
                     | range()
                     | unique().
+
+-type object() :: {[{binary(), type(), [constraint()]}],
+                   [binary()],
+                   boolean()}.
 
 -if(?OTP_RELEASE >= 25).
 -define(uniq(L), lists:uniq(L)).
@@ -80,7 +86,7 @@ enum(Values) when is_list(Values) ->
 enum(_) ->
     error(badarg).
 
--spec items(Type :: type(), Constraints :: [constraint()]) -> items().
+-spec items(Type :: type(), Constraints :: [constraint()] | object()) -> items().
 items(Type, Constraints) ->
     {allowed, {Type, Constraints}}.
 
@@ -121,7 +127,8 @@ range(_, _, _) ->
 unique() ->
     {unique, true}.
 
--spec validate(Constraint :: constraint(), Value :: any()) -> boolean().
+-spec validate(Constraint :: constraint(), Value :: any()) ->
+          boolean() | continue().
 validate({ub, {inclusive, N}}, Value) ->
     Value =< N;
 validate({ub, {exclusive, N}}, Value) ->
@@ -155,27 +162,4 @@ validate({length, {max, N}}, Str) ->
     string:length(Str) =< N;
 
 validate({allowed, {Type, Constraints}}, L) when is_list(L) ->
-    lists:foldr(
-      fun (X, Acc) ->
-              Acc andalso check_type(Type, X)
-                  andalso check_constraints(X, Constraints)
-      end,
-      true,
-      L).
-
-check_type(integer, Value) -> is_integer(Value);
-check_type(number, Value) -> is_number(Value);
-check_type(string, Value) -> is_binary(Value);
-check_type(null, null) -> true;
-check_type(boolean, Value) -> is_boolean(Value);
-check_type(object, Value) -> is_map(Value);
-check_type(array, Value) -> is_list(Value);
-check_type(_, _) -> false.
-
-check_constraints(Value, Constraints) ->
-    lists:foldr(
-      fun (Constraint, Acc) ->
-              Acc andalso validate(Constraint, Value)
-      end,
-      true,
-      Constraints).
+    {continue, [{Value, {Type, Constraints}} || Value <- L]}.

@@ -77,34 +77,57 @@ item_count_constraint_test_() ->
                        jerk_constraint:validate(MinItemsConstraint, L)))
        || L <- [[], [1], [1, 2], [1, 2, 3], [1, 2, 3, 4]]]}].
 
-item_type_constraint_test_() ->
-    {"all elements must match items constraint type",
-     [integer_items(), string_items()]}.
-
 item_number_constraint_test_() ->
+    NumberConstraints = [jerk_constraint:range(lb, inclusive, 3),
+                         jerk_constraint:range(ub, exclusive, 5)],
     Constraint = jerk_constraint:items(
-                   number, [jerk_constraint:range(lb, inclusive, 3),
-                            jerk_constraint:range(ub, exclusive, 5)]),
+                   number, NumberConstraints),
     {"all elements must satisfy items constraints",
-     [?_test(?assert(jerk_constraint:validate(Constraint, [3, 4]))),
-      ?_test(?assert(jerk_constraint:validate(Constraint, []))),
-      ?_test(?assert(not jerk_constraint:validate(Constraint, [2, 5]))),
-      ?_test(?assert(not jerk_constraint:validate(Constraint, [3, 5]))),
-      ?_test(?assert(not jerk_constraint:validate(Constraint, [2, 4])))]}.
+     [?_test(?assertEqual(
+                {continue, [{3, {number, NumberConstraints}},
+                            {4, {number, NumberConstraints}}]},
+                jerk_constraint:validate(Constraint, [3, 4]))),
+      ?_test(?assertEqual(
+                {continue, []},
+                jerk_constraint:validate(Constraint, [])))]}.
 
-integer_items() ->
-    Constraint = jerk_constraint:items(integer, []),
-    [?_test(?assert(jerk_constraint:validate(Constraint, []))),
-     ?_test(?assert(jerk_constraint:validate(Constraint, [1, 2]))),
-     [?_assert(not jerk_constraint:validate(Constraint, [1, Bad]))
-      || Bad <- [1.0, <<"foo">>, true, null, #{}, #{<<"foo">> => 1}]]].
+primitive_items_test_() ->
+    {inparallel,
+     [?_assertEqual(
+         {continue, [{<<"anything">>, {Type, []}},
+                     {1, {Type, []}},
+                     {2.0, {Type, []}}]},
+         jerk_constraint:validate(
+           jerk_constraint:items(Type, []),
+           [<<"anything">>, 1, 2.0]))
+      || Type <- [string, null, integer, number, boolean,
+                  array, ref, object]]}.
 
-string_items() ->
-    Constraint = jerk_constraint:items(string, []),
-    [?_test(?assert(jerk_constraint:validate(Constraint, [<<"foo">>]))),
-     ?_test(?assert(jerk_constraint:validate(Constraint, [<<"">>]))),
-     [?_assert(not jerk_constraint:validate(Constraint, [Bad]))
-      || Bad <- [null, false, 12, 1.0]]].
+object_items_test_() ->
+    ObjectDescription =
+        {[{<<"a">>, integer,
+           [jerk_constraint:range(ub, inclusive, 0)]},
+          {<<"b">>, string, [jerk_constraint:length(max, 4),
+                             jerk_constraint:length(min, 1)]}],
+         [<<"a">>],
+         false},
+    Constraint =
+        jerk_constraint:items(
+          object,
+          ObjectDescription),
+    [?_test(?assertMatch({continue, [_, _]},
+                         jerk_constraint:validate(
+                           Constraint,
+                           [#{<<"a">> => 1, <<"b">> => 2},
+                            #{<<"a">> => 0, <<"b">> => <<"foo">>}]))),
+     ?_test(?assertEqual({continue, [{1, {object, ObjectDescription}}]},
+                         jerk_constraint:validate(
+                           Constraint, [1]))),
+     ?_test(?assertEqual({continue, [{#{<<"a">> => 0, <<"b">> => <<"foo">>},
+                                      {object, ObjectDescription}}]},
+                         jerk_constraint:validate(
+                           Constraint,
+                           [#{<<"a">> => 0, <<"b">> => <<"foo">>}])))].
 
 unique_constraint_test_() ->
     Unique = jerk_constraint:unique(),

@@ -142,7 +142,8 @@ definition_reference_test_() ->
 
 array_constraint_test_() ->
     [{"array item constraints",
-      [fun item_value_constraint/0, fun item_count_constraint/0]},
+      [fun item_value_constraint/0, fun item_count_constraint/0,
+       fun item_object_constraint/0]},
      {"array unique constraints",
       array_unique_constraint()}].
 
@@ -162,6 +163,27 @@ item_value_constraint() ->
         jerk_loader:load_json(Schema),
     ?assert(lists:member({lb, {inclusive, 0}}, Constraints)),
     ?assert(lists:member({ub, {exclusive, 3}}, Constraints)).
+
+item_object_constraint() ->
+    Schema = jiffy:encode(
+               #{<<"$id">> => <<"foo">>,
+                 <<"type">> => <<"array">>,
+                 <<"items">> =>
+                     #{<<"type">> => <<"object">>,
+                       <<"properties">> =>
+                           #{<<"a">> => #{<<"type">> => <<"integer">>,
+                                          <<"minimum">> => 0},
+                             <<"b">> => #{<<"type">> => <<"string">>}},
+                       <<"required">> => [<<"a">>]}}),
+    [{<<"foo">>, array,
+      [{allowed, {object, ObjectDescription}}]}] =
+        jerk_loader:load_json(Schema),
+    ?assertMatch({[_, _], [<<"a">>], false}, ObjectDescription),
+    Properties = element(1, ObjectDescription),
+    ?assertEqual({<<"a">>, integer, [{lb, {inclusive, 0}}]},
+                 lists:keyfind(<<"a">>, 1, Properties)),
+    ?assertEqual({<<"b">>, string, []},
+                 lists:keyfind(<<"b">>, 1, Properties)).
 
 item_count_constraint() ->
     Schema = jiffy:encode(
