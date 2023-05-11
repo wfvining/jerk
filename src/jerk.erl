@@ -12,7 +12,8 @@
 
 
 -export_type([schemaname/0, jerkterm/0, primterm/0,
-              attribute_name/0, attribute_value/0]).
+              attribute_name/0, attribute_value/0,
+              type/0]).
 
 -type schemaname() :: binary().
 
@@ -21,6 +22,15 @@
 -type attribute_name() :: string:string().
 
 -type attribute_value() :: jerkterm() | primterm().
+
+-type type() :: object
+              | integer
+              | number
+              | string
+              | array
+              | boolean
+              | null
+              | ref.
 
 -opaque jerkterm() :: {Id :: atom(),
                        URN :: binary(),

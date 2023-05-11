@@ -21,16 +21,10 @@
               length/0,
               multipleof/0,
               range/0,
-              unique/0]).
+              unique/0,
+              constraint/0]).
 
--type type() :: object
-              | integer
-              | number
-              | string
-              | array
-              | boolean
-              | null
-              | ref.
+-type type() :: jerk:type().
 
 -type continue() :: {continue, [{any(), {type(), constraint()}}]}.
 
