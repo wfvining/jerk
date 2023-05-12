@@ -24,5 +24,5 @@ check_type(X, string) -> is_binary(X);
 check_type(X, array) -> is_list(X);
 check_type(X, null) -> X =:= null.
 
-check_constraints(_, _) ->
-    true.
+check_constraints(X, Constraints) ->
+    lists:all(fun(C) -> jerk_constraint:validate(C, X) end, Constraints).
