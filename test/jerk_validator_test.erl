@@ -37,3 +37,14 @@ bad_type_test() ->
     ?assert(
        not jerk_validator:validate(
              3, string, [jerk_constraint:length(min, 1)])).
+
+validate_object_test() ->
+    Obj = #{<<"a">> => <<"foo">>, <<"b">> => 1},
+    {_If, Type, Description} =
+        {<<"obj">>, object,
+         {[{<<"a">>, string, [jerk_constraint:length(min, 2),
+                              jerk_constraint:length(max, 3)]},
+           {<<"b">>, integer, []}],
+          [<<"a">>, <<"b">>],
+          false}},
+    ?assert(jerk_validator:validate(Obj, Type, Description)).
