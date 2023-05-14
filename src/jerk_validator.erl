@@ -7,9 +7,6 @@
 -export([validate/3]).
 
 %% @doc Check if `Object' is valid against `Schema'.
-%%
-%% @param Object A jerk object or primitive.
-%% @param
 -spec validate(Object :: jerk:object() | jerk:primterm(),
                Type :: jerk:type(),
                Constraints :: [jerk_constraint:constraint()]) ->
