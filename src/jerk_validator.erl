@@ -71,6 +71,7 @@ maybe_validate(Continuations) ->
            [],
            Continuations)
     of
+        false -> false;
         [] -> true;
         RemainingContinuations -> {continue, RemainingContinuations}
     end.

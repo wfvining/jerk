@@ -58,6 +58,19 @@ validate_items_object_test_() ->
        || Constraints <- [[RefConstraint, MaxLenConstraint],
                           [MaxLenConstraint, RefConstraint]]]}].
 
+validate_items_primitive_test_() ->
+    GoodArray = [1, -1],
+    BadArray = [1, 2],
+    Constraint =
+        jerk_constraint:items(
+          integer, [jerk_constraint:range(lb, inclusive, -1),
+                    jerk_constraint:range(ub, inclusive, 1)]),
+    [?_assert(jerk_validator:validate(GoodArray, array, [Constraint])),
+     ?_assert(not jerk_validator:validate(BadArray, array, [Constraint])),
+     ?_assert(not jerk_validator:validate(
+                    [1|GoodArray], array,
+                    [Constraint, jerk_constraint:item_count(max, 2)]))].
+
 %% TODO Validation of a constraint with a reference to another schema
 %%      returns a continuation.
 
