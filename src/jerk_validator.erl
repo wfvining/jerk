@@ -27,7 +27,53 @@ check_type(X, array) -> is_list(X);
 check_type(X, null) -> X =:= null.
 
 check_constraints(X, Constraints) ->
-    lists:all(fun(C) -> jerk_constraint:validate(C, X) end, Constraints).
+    Results = [jerk_constraint:validate(C, X) || C <- Constraints],
+    SimpleValid =
+        lists:all(fun(Result) -> Result end,
+                  lists:filter(fun is_boolean/1, Results)),
+    if not SimpleValid ->
+            false;
+       true ->
+            check_continuation(Results)
+    end.
+
+check_continuation(Results) ->
+    check_continuation(
+      lists:filter(fun(X) -> not is_boolean(X) end, Results), []).
+
+check_continuation([], []) ->
+    true;
+check_continuation([], Continuations) ->
+    {continue, Continuations};
+check_continuation([{continue, C}|Rest], Continuations) ->
+    case maybe_validate(C) of
+        true ->
+            check_continuation(Rest, Continuations);
+        false ->
+            false;
+        {continue, Cont} ->
+            check_continuation(Rest, Cont ++ Continuations)
+    end.
+
+maybe_validate(Continuations) ->
+    case lists:foldr(
+           fun (_, false) -> false;
+               ({_, {ref, _}} = C, Cont) when is_list(Cont) ->
+                   [C|Cont];
+               ({Value, {Type, Constraints}}, Cont) ->
+                   case validate(Value, Type, Constraints) of
+                       true -> Cont;
+                       false -> false;
+                       {continue, Cs} ->
+                           Cs ++ Cont
+                   end
+           end,
+           [],
+           Continuations)
+    of
+        [] -> true;
+        RemainingContinuations -> {continue, RemainingContinuations}
+    end.
 
 check_required(Object, {_, Required, _}) ->
     lists:all(fun(Param) -> maps:is_key(Param, Object) end,
