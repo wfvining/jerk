@@ -16,6 +16,8 @@ validate(Object, object, ObjectDescription) when is_map(Object)->
         andalso check_params(Object, ObjectDescription);
 validate(Object, object, _) when not is_map(Object) ->
     false;
+validate(Object, ref, SchemaRef) ->
+    {continue, [{Object, {ref, SchemaRef}}]};
 validate(Object, Type, Constraints) ->
     check_type(Object, Type) andalso check_constraints(Object, Constraints).
 

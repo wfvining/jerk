@@ -71,8 +71,14 @@ validate_items_primitive_test_() ->
                     [1|GoodArray], array,
                     [Constraint, jerk_constraint:item_count(max, 2)]))].
 
-%% TODO Validation of a constraint with a reference to another schema
-%%      returns a continuation.
+validate_ref_test() ->
+    Bar = #{<<"bar">> => 2},
+    Obj = #{<<"foo">> => Bar},
+    ObjDescription = {[{<<"foo">>, ref, <<"#/bar">>}],
+                      [<<"foo">>],
+                      true},
+    ?assertEqual({continue, [{Bar, {ref, <<"#/bar">>}}]},
+                 jerk_validator:validate(Obj, object, ObjDescription)).
 
 bad_type_test() ->
     ?assert(
