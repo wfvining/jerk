@@ -44,19 +44,20 @@ validate_items_object_test_() ->
         jerk_constraint:items(ref, <<"urn:foo">>),
     MaxLenConstraint =
         jerk_constraint:item_count(max, 1),
-    [{"validation of items constraint with locally defined object type succeeds",
-      ?_assert(jerk_validator:validate(Array, array, [DirectConstraint]))},
-     {"validation of items constraint with a reference results in a continuation",
-      ?_assertEqual(
-         {continue, [{#{<<"foo">> => 1}, {ref, <<"urn:foo">>}},
-                     {#{<<"foo">> => 2}, {ref, <<"urn:foo">>}}]},
-         jerk_validator:validate(Array, array, [RefConstraint]))},
-     {"validation of items constraint fails if "
-      "length constraints are not satisfied",
-      [?_assert(not jerk_validator:validate(
-                     Array, array, Constraints))
-       || Constraints <- [[RefConstraint, MaxLenConstraint],
-                          [MaxLenConstraint, RefConstraint]]]}].
+    {inparallel,
+     [{"validation of items constraint with locally defined object type succeeds",
+       ?_assert(jerk_validator:validate(Array, array, [DirectConstraint]))},
+      {"validation of items constraint with a reference results in a continuation",
+       ?_assertEqual(
+          {continue, [{#{<<"foo">> => 1}, {ref, <<"urn:foo">>}},
+                      {#{<<"foo">> => 2}, {ref, <<"urn:foo">>}}]},
+          jerk_validator:validate(Array, array, [RefConstraint]))},
+      {"validation of items constraint fails if "
+       "length constraints are not satisfied",
+       [?_assert(not jerk_validator:validate(
+                       Array, array, Constraints))
+        || Constraints <- [[RefConstraint, MaxLenConstraint],
+                           [MaxLenConstraint, RefConstraint]]]}]}.
 
 validate_items_primitive_test_() ->
     GoodArray = [1, -1],
@@ -65,11 +66,12 @@ validate_items_primitive_test_() ->
         jerk_constraint:items(
           integer, [jerk_constraint:range(lb, inclusive, -1),
                     jerk_constraint:range(ub, inclusive, 1)]),
-    [?_assert(jerk_validator:validate(GoodArray, array, [Constraint])),
-     ?_assert(not jerk_validator:validate(BadArray, array, [Constraint])),
-     ?_assert(not jerk_validator:validate(
-                    [1|GoodArray], array,
-                    [Constraint, jerk_constraint:item_count(max, 2)]))].
+    {inparallel,
+     [?_assert(jerk_validator:validate(GoodArray, array, [Constraint])),
+      ?_assert(not jerk_validator:validate(BadArray, array, [Constraint])),
+      ?_assert(not jerk_validator:validate(
+                     [1|GoodArray], array,
+                     [Constraint, jerk_constraint:item_count(max, 2)]))]}.
 
 validate_ref_test() ->
     Bar = #{<<"bar">> => 2},
