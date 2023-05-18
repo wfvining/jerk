@@ -32,14 +32,14 @@
               | null
               | ref.
 
--opaque jerkterm() :: {Id :: atom(),
-                       URN :: binary(),
+-opaque jerkterm() :: {URN :: binary(),
                        Attributes :: #{attribute_name() => attribute_value()}}.
 
 %% @doc Add a schema to the Jerk schema catalog.
 -spec add_schema(Schema :: string:string()) -> ok | {error, already_loaded}.
-add_schema(_Schema) ->
-    error(not_implemented).
+add_schema(Schema) ->
+    Schemas = jerk_loader:load_json(Schema),
+    lists:foreach(fun jerk_catalog:add_schema/1, Schemas).
 
 %% @doc Load a schema from a file and add it to the Jerk schema catalog.
 -spec load_schema(Path :: file:filename()) -> ok | {error, Reason}
@@ -52,15 +52,29 @@ load_schema(_Path) ->
 remove_schema(_SchemaID) ->
     error(not_implemented).
 
-%% @doc Create a new `JerkTerm' of the type specified by `Schema'. The
+%% @doc Create a new `JerkTerm' of the type specified by `SchemaId'. The
 %% values of the attributes are given in `Attributes'. If any required
 %% values are not in the attribute list or if any values do not
 %% conform to the schema the call fails with reason `badarg'.
--spec new(Schema :: schemaname(),
+-spec new(SchemaId :: schemaname(),
           AttributeList :: [{attribute_name(), attribute_value()}]) ->
           jerkterm().
-new(Schema, Attributes) ->
-    error(not_implemented).
+new(SchemaId, Attributes) ->
+    Schema = jerk_catalog:get_schema(SchemaId),
+    {SchemaId, load_attributes(Schema, Attributes)}.
+
+load_attributes({SchemaId, _, _} = Schema, Attributes) ->
+    load_attributes(SchemaId, Schema, Attributes).
+
+load_attributes(_RootSchema, {_, object, ObjectDescription}, Attributes) ->
+    Obj = maps:from_list(Attributes),
+    case jerk_validator:validate(Obj, object, ObjectDescription) of
+        true ->
+            Obj;
+        false ->
+            error(badarg)
+    end.
+
 
 %% @doc Return the names of all defined attributes in `JerkTerm'.
 -spec attributes(JerkTerm :: jerkterm()) -> [attribute_name()].
