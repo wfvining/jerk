@@ -17,7 +17,7 @@ load_object(ID, Object, Schemas) ->
           maps:get(<<"properties">>, Object, #{})),
     SubTypes =
         load_definitions(
-          <<ID/binary, "/definitions">>,
+          <<ID/binary, "#/definitions">>,
           maps:get(<<"definitions">>, Object, #{}),
           []),
     Required = maps:get(<<"required">>, Object, []),

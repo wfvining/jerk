@@ -79,16 +79,16 @@ definitions_test_() ->
      fun(Definition) ->
              [?_test(
                  ?assertEqual(
-                    {<<"foo/definitions/bar">>, integer, []},
-                    lists:keyfind(<<"foo/definitions/bar">>, 1, Definition))),
+                    {<<"foo#/definitions/bar">>, integer, []},
+                    lists:keyfind(<<"foo#/definitions/bar">>, 1, Definition))),
               ?_test(
                  ?assertMatch(
-                    {<<"foo/definitions/baz">>, object, {[_], [], false}},
-                    lists:keyfind(<<"foo/definitions/baz">>, 1, Definition))),
+                    {<<"foo#/definitions/baz">>, object, {[_], [], false}},
+                    lists:keyfind(<<"foo#/definitions/baz">>, 1, Definition))),
               ?_test(
                  begin
                      {_, _, {BazProperties, _, _}} =
-                         lists:keyfind(<<"foo/definitions/baz">>, 1, Definition),
+                         lists:keyfind(<<"foo#/definitions/baz">>, 1, Definition),
                      ?assertEqual([{<<"a">>, boolean, []}], BazProperties)
                  end),
               ?_test(
