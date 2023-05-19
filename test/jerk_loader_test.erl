@@ -217,3 +217,13 @@ array_unique_constraint() ->
                [{<<"foo">>, array, []}],
                jerk_loader:load_json(Schema))
         end)].
+
+unconstrained_type_test() ->
+    Schema = jiffy:encode(
+               #{<<"$id">> => <<"foo">>,
+                 <<"type">> => <<"object">>,
+                 <<"properties">> =>
+                     #{<<"foo">> => #{<<"irrelevant">> => <<"stuff">>}}}),
+    ?assertEqual([{<<"foo">>, object,
+                   {[{<<"foo">>, any, nil}], [], false}}],
+                 jerk_loader:load_json(Schema)).

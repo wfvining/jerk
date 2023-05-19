@@ -2,6 +2,8 @@
 
 -export([load_json/1]).
 
+%% @doc Load a schema from a JSON string.
+-spec load_json(Schema :: string:string()) -> [{binary(), jerk:type(), any()}].
 load_json(Schema) ->
     JSONTerm = jiffy:decode(Schema, [return_maps]),
     load(JSONTerm, []).
@@ -140,7 +142,10 @@ load_definition(_, #{<<"type">> := _}, _) ->
     error(badarg);
 load_definition(ID, #{<<"$ref">> := Reference}, Schemas)
   when is_binary(Reference) ->
-    [new_record(ref, ID, Reference) | Schemas].
+    [new_record(ref, ID, Reference) | Schemas];
+load_definition(ID, _, Schemas) ->
+    [new_record(any, ID, nil) | Schemas].
+
 
 load_definitions(BaseID, Definitions, Schemas) ->
     maps:fold(

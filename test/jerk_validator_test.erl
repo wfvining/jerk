@@ -97,3 +97,9 @@ validate_object_test() ->
           [<<"a">>, <<"b">>],
           false}},
     ?assert(jerk_validator:validate(Obj, Type, Description)).
+
+validate_any_type_test_() ->
+    {inparallel,
+     [?_assert(jerk_validator:validate(X, any, nil))
+      || X <- [1, 12.1, <<"foo">>, false, null,
+               #{<<"complex">> => #{<<"nested">> => <<"stuff">>}}]]}.
