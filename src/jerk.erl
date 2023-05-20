@@ -7,8 +7,7 @@
 %% Schema management API
 -export([add_schema/1, load_schema/1, remove_schema/1]).
 
-%% Term creation API
--export([new/2, attributes/1, get_value/2, set_value/3]).
+-export([new/2, id/1, attributes/1, get_value/2, set_value/3]).
 
 
 -export_type([schemaname/0, jerkterm/0, primterm/0,
@@ -32,7 +31,7 @@
               | null
               | ref.
 
--opaque jerkterm() :: {URN :: binary(),
+-opaque jerkterm() :: {Id :: binary(),
                        Attributes :: #{attribute_name() => attribute_value()}}.
 
 %% @doc Add a schema to the Jerk schema catalog.
@@ -61,32 +60,102 @@ remove_schema(_SchemaID) ->
           jerkterm().
 new(SchemaId, Attributes) ->
     Schema = jerk_catalog:get_schema(SchemaId),
-    {SchemaId, load_attributes(Schema, Attributes)}.
+    make_term(SchemaId, Schema, Attributes).
 
-load_attributes({SchemaId, _, _} = Schema, Attributes) ->
-    load_attributes(SchemaId, Schema, Attributes).
+make_term(BaseURI, {SchemaId, object, ObjectDescription}, Attributes) ->
+    make_object(BaseURI, SchemaId, ObjectDescription, Attributes);
+make_term(BaseURI, {_Id, ref, Path}, Value) ->
+    %% TODO differentiate between absolute and relative URIs
+    URI = <<BaseURI/binary, Path/binary>>,
+    make_term(BaseURI, jerk_catalog:get_schema(URI), Value);
+make_term(BaseURI, Description, Value) ->
+    case validate(BaseURI, Description, Value) of
+        true -> Value;
+        false -> error(badarg)
+    end.
 
-load_attributes(_RootSchema, {_, object, ObjectDescription}, Attributes) ->
-    Obj = maps:from_list(Attributes),
-    case jerk_validator:validate(Obj, object, ObjectDescription) of
+make_object(BaseURI, SchemaId, {Properties, Required, Frozen}, Attributes) ->
+    O = lists:foldl(
+          fun ({Name, Value}, Obj) ->
+                  case lists:keyfind(Name, 1, Properties) of
+                      false when Frozen -> error(badarg);
+                      false when not Frozen ->
+                          Obj#{Name => maybe_object(Value)};
+                      {Name, object, Description} ->
+                          Term =
+                              make_term(
+                                BaseURI,
+                                %% use a JSON pointer to refer to the anonymous
+                                %% subschema within the properties of SchemaId.
+                                {<<SchemaId/binary, "#/properties/", Name/binary>>,
+                                 object, Description},
+                                Value),
+                          Obj#{Name => Term};
+                      Description ->
+                          Term = make_term(BaseURI, Description, Value),
+                          Obj#{Name => Term}
+                  end
+          end,
+          #{},
+          Attributes),
+    case lists:all(fun(RequiredKey) -> maps:is_key(RequiredKey, O) end,
+                   Required)
+    of
         true ->
-            Obj;
+            {SchemaId, O};
         false ->
             error(badarg)
     end.
 
+validate(BaseURI, {_, Type, ObjectDescription}, Obj) ->
+    case jerk_validator:validate(Obj, Type, ObjectDescription) of
+        {continue, Cont} ->
+            lists:all(
+              fun ({X, {ref, Path}}) ->
+                      Schema =
+                          jerk_catalog:get_schema(<<BaseURI/binary, Path/binary>>),
+                      validate(BaseURI, Schema, X);
+                  ({X, {XType, Description}}) ->
+                      validate(BaseURI, {'anonymous', XType, Description}, X)
+              end, Cont);
+        Result -> Result
+    end.
+
+maybe_object([{_, _}|_] = X) ->
+    from_list(X);
+maybe_object(X) ->
+    X.
+
+from_list(AttributeList) ->
+    lists:foldl(
+      fun ({Name, [{_, _}|_] = Value}, Map) ->
+              maps:put(Name, from_list(Value), Map);
+          ({Name, Value}, Map) ->
+              maps:put(Name, Value, Map)
+      end,
+      #{},
+      AttributeList).
+
+%% @doc Return the identifier of the schema for `Term'
+-spec id(Term :: jerkterm()) -> binary().
+id({ID, _}) ->
+    ID.
 
 %% @doc Return the names of all defined attributes in `JerkTerm'.
 -spec attributes(JerkTerm :: jerkterm()) -> [attribute_name()].
-attributes(_JerkTerm) ->
-    error(not_implemented).
+attributes({_, Attributes}) ->
+    maps:keys(Attributes).
 
 %% @doc Return the value of `AttributeName'. If the attribute is not
 %% defined the call fails with reason `badarg'.
 -spec get_value(JerkTerm :: jerkterm(),
                 AttributeName :: attribute_name()) -> attribute_value().
-get_value(_, _) ->
-    error(not_implemented).
+get_value({_, Attributes}, AttributeName) ->
+    try
+        maps:get(AttributeName, Attributes)
+    catch error:{badkey, AttributeName} ->
+            error({undefined, AttributeName})
+    end.
 
 %% @doc Set the value of `Attribute' to `Value' in `JerkTerm'. If the
 %% attribute is not allowed in schema of `JerkTerm' or if the value is
@@ -95,5 +164,10 @@ get_value(_, _) ->
                 Attribute :: attribute_name(),
                 Value :: attribute_value()) ->
           JerkTerm when JerkTerm :: jerkterm().
-set_value(JerkTerm, AttributeName, Value) ->
-    error(not_implemented).
+set_value({ID, Obj}, AttributeName, Value) ->
+    NewObj = Obj#{AttributeName => Value},
+    {_, Type, Description} = jerk_catalog:get_schema(ID),
+    case jerk_validator:validate(NewObj, Type, Description) of
+        true -> {ID, NewObj};
+        false -> error(badvalue)
+    end.
