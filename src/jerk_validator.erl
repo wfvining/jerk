@@ -86,8 +86,16 @@ check_required(Object, {_, Required, _}) ->
 
 check_params(Object, {Params, _, Frozen}) ->
     maps:fold(
-      fun(Param, Value, Acc) ->
-              Acc andalso validate_param(Param, Value, Params, Frozen)
+      fun (Param, Value, true) ->
+              validate_param(Param, Value, Params, Frozen);
+          (_, _, false) ->
+              false;
+          (Param, Value, {continue, C}) ->
+              case validate_param(Param, Value, Params, Frozen) of
+                  true -> {continue, C};
+                  false -> false;
+                  {continue, C1} -> {continue, C1 ++ C}
+              end
       end,
       true,
       Object).

@@ -103,3 +103,53 @@ validate_any_type_test_() ->
      [?_assert(jerk_validator:validate(X, any, nil))
       || X <- [1, 12.1, <<"foo">>, false, null,
                #{<<"complex">> => #{<<"nested">> => <<"stuff">>}}]]}.
+
+complex_nested_test() ->
+    SchemaBar =
+        jiffy:encode(
+          #{<<"$id">> => <<"bar">>,
+            <<"type">> => <<"object">>,
+            <<"properties">> =>
+                #{<<"a">> => #{<<"$ref">> => <<"#/definitions/TypeA">>},
+                  <<"b">> => #{<<"type">> => <<"integer">>},
+                  <<"c">> => #{<<"type">> => <<"object">>,
+                               <<"properties">> => #{<<"d">> => <<"integer">>}}},
+            <<"required">> => [<<"a">>],
+            <<"additionalProperties">> => false}),
+    [{<<"bar">>, object, ObjDescription}] = jerk_loader:load_json(SchemaBar),
+    ValidationResult =
+        jerk_validator:validate(
+          #{<<"a">> => #{<<"name">> => <<"foo">>},
+            <<"b">> => 1,
+            <<"c">> => #{<<"d">> => 2}},
+          object,
+          ObjDescription),
+    ?assertEqual(
+       {continue, [{#{<<"name">> => <<"foo">>},
+                    {ref, <<"#/definitions/TypeA">>}}]},
+        ValidationResult).
+
+multiple_continuation_test() ->
+    SchemaBar =
+        jiffy:encode(
+          #{<<"$id">> => <<"bar">>,
+            <<"type">> => <<"object">>,
+            <<"properties">> =>
+                #{<<"a">> => #{<<"$ref">> => <<"#/definitions/TypeA">>},
+                  <<"b">> => #{<<"type">> => <<"integer">>},
+                  <<"c">> => #{<<"$ref">> => <<"#/definitions/TypeC">>}},
+            <<"required">> => [<<"a">>],
+            <<"additionalProperties">> => false}),
+    [{<<"bar">>, object, ObjDescription}] = jerk_loader:load_json(SchemaBar),
+    {continue, Cont} =
+        jerk_validator:validate(
+          #{<<"a">> => #{<<"name">> => <<"foo">>},
+            <<"b">> => 1,
+            <<"c">> => #{<<"d">> => 2}},
+          object,
+          ObjDescription),
+    ?assertEqual(
+       lists:sort(
+         [{#{<<"name">> => <<"foo">>}, {ref, <<"#/definitions/TypeA">>}},
+          {#{<<"d">> => 2}, {ref, <<"#/definitions/TypeC">>}}]),
+       lists:sort(Cont)).
