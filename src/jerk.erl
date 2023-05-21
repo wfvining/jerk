@@ -182,14 +182,6 @@ make_uri(URI, <<"#/", _/binary>> = Path) ->
 make_uri(URI, Path) ->
     <<URI/binary, Path/binary>>.
 
-make_property_uri(SchemaId, PropertyName) ->
-    case string:find(SchemaId, <<"#/properties">>) of
-        nomatch ->
-            <<SchemaId/binary, "#/properties/", PropertyName/binary>>;
-        _ ->
-            <<SchemaId/binary, "/", PropertyName/binary>>
-    end.
-
 %% @doc Set the value of `Attribute' to `Value' in `JerkTerm'. If the
 %% attribute is not allowed in schema of `JerkTerm' or if the value is
 %% not allowed the call fails with reason `badarg'.
