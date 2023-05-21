@@ -81,7 +81,7 @@ make_object(BaseURI, SchemaId, {Properties, Required, Frozen}, Attributes) ->
                       false when Frozen -> error(badarg);
                       false when not Frozen ->
                           Obj#{Name => maybe_object(Value)};
-                      {Name, object, Description} ->
+                      {Name, object, Description} when is_list(Value) ->
                           {_, Term} =
                               make_term(
                                 BaseURI,
@@ -91,6 +91,14 @@ make_object(BaseURI, SchemaId, {Properties, Required, Frozen}, Attributes) ->
                                  object, Description},
                                 Value),
                           Obj#{Name => Term};
+                      Description
+                        when is_tuple(Value) andalso tuple_size(Value) =:= 2 ->
+                          case validate(BaseURI, Description, element(2, Value)) of
+                              true ->
+                                  Obj#{Name => element(2, Value)};
+                              false ->
+                                  error(badarg)
+                          end;
                       Description ->
                           case make_term(BaseURI, Description, Value) of
                               {_, Term} ->

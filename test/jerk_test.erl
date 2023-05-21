@@ -131,7 +131,15 @@ create_nested_term() ->
               {<<"c">>, [{<<"d">>, 2}]}]),
     ?assertEqual(1, jerk:get_value(Term, <<"b">>)),
     ?assertEqual(<<"test">>,
-                 jerk:get_value(jerk:get_value(Term, <<"a">>), <<"name">>)).
+                 jerk:get_value(jerk:get_value(Term, <<"a">>), <<"name">>)),
+    A = jerk:new(<<"bar#/definitions/TypeA">>,
+                 [{<<"name">>, <<"test3">>}, {<<"id">>, 3}]),
+    C = jerk:new(<<"bar#/properties/c">>, [{<<"d">>, 2}]),
+    T2 = jerk:new(<<"bar">>, [{<<"b">>, 1}, {<<"a">>, A}]),
+    ?assertEqual(<<"test3">>,
+                 jerk:get_value(jerk:get_value(T2, <<"a">>), <<"name">>)),
+    ?assertError(badarg,
+                 jerk:new(<<"bar">>, [{<<"b">>, 1}, {<<"a">>, C}])).
 
 create_invalid_nested_term() ->
     ?assertError(
