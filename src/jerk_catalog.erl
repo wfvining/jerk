@@ -16,9 +16,27 @@ add_schema(Schema) ->
 get_schema(SchemaID) ->
     case ets:lookup(?SERVER, SchemaID) of
         [] ->
-            error(badarg);
+            get_subschema(SchemaID);
         [Schema] ->
             Schema
+    end.
+
+get_subschema(SchemaURI) ->
+    case string:split(SchemaURI, <<"#/">>) of
+        [BaseURI, Path] ->
+            Schema = get_schema(BaseURI),
+            get_subschema(Path, Schema);
+        [SchemaURI] ->
+            error(badarg)
+    end.
+
+get_subschema(<<"properties/", Id/binary>>,
+              {_, object, {Properties, _, _}}) ->
+    case lists:keyfind(Id, 1, Properties) of
+        false ->
+            error(badarg);
+        Description ->
+            Description
     end.
 
 init([]) ->

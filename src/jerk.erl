@@ -82,7 +82,7 @@ make_object(BaseURI, SchemaId, {Properties, Required, Frozen}, Attributes) ->
                       false when not Frozen ->
                           Obj#{Name => maybe_object(Value)};
                       {Name, object, Description} ->
-                          Term =
+                          {_, Term} =
                               make_term(
                                 BaseURI,
                                 %% use a JSON pointer to refer to the anonymous
@@ -92,8 +92,12 @@ make_object(BaseURI, SchemaId, {Properties, Required, Frozen}, Attributes) ->
                                 Value),
                           Obj#{Name => Term};
                       Description ->
-                          Term = make_term(BaseURI, Description, Value),
-                          Obj#{Name => Term}
+                          case make_term(BaseURI, Description, Value) of
+                              {_, Term} ->
+                                  Obj#{Name => Term};
+                              Term ->
+                                  Obj#{Name => Term}
+                          end
                   end
           end,
           #{},
@@ -107,16 +111,16 @@ make_object(BaseURI, SchemaId, {Properties, Required, Frozen}, Attributes) ->
             error(badarg)
     end.
 
-validate(BaseURI, {_, Type, ObjectDescription}, Obj) ->
+validate(URI, {_, Type, ObjectDescription}, Obj) ->
     case jerk_validator:validate(Obj, Type, ObjectDescription) of
         {continue, Cont} ->
             lists:all(
               fun ({X, {ref, Path}}) ->
                       Schema =
-                          jerk_catalog:get_schema(<<BaseURI/binary, Path/binary>>),
-                      validate(BaseURI, Schema, X);
+                          jerk_catalog:get_schema(make_uri(URI, Path)),
+                      validate(URI, Schema, X);
                   ({X, {XType, Description}}) ->
-                      validate(BaseURI, {'anonymous', XType, Description}, X)
+                      validate(URI, {'anonymous', XType, Description}, X)
               end, Cont);
         Result -> Result
     end.
@@ -150,11 +154,40 @@ attributes({_, Attributes}) ->
 %% defined the call fails with reason `badarg'.
 -spec get_value(JerkTerm :: jerkterm(),
                 AttributeName :: attribute_name()) -> attribute_value().
-get_value({_, Attributes}, AttributeName) ->
+get_value({SchemaId, Attributes}, AttributeName) ->
     try
-        maps:get(AttributeName, Attributes)
+        Value = maps:get(AttributeName, Attributes),
+        maybe_term(SchemaId, AttributeName, Value)
     catch error:{badkey, AttributeName} ->
             error({undefined, AttributeName})
+    end.
+
+maybe_term(SchemaId, PropertyName, Value) when is_map(Value) ->
+    {_, object, {Properties, _, _}} = jerk_catalog:get_schema(SchemaId),
+    case lists:keyfind(PropertyName, 1, Properties) of
+        false ->
+            Value;
+        {_, ref, Path} ->
+            {make_uri(SchemaId, Path), Value};
+        {_, _, _} ->
+            {make_uri(SchemaId, <<"#/properties/", PropertyName/binary>>),
+             Value}
+    end;
+maybe_term(_, _, Value) ->
+    Value.
+
+make_uri(URI, <<"#/", _/binary>> = Path) ->
+    [BaseURI|_] = string:split(URI, <<"#/">>),
+    <<BaseURI/binary, Path/binary>>;
+make_uri(URI, Path) ->
+    <<URI/binary, Path/binary>>.
+
+make_property_uri(SchemaId, PropertyName) ->
+    case string:find(SchemaId, <<"#/properties">>) of
+        nomatch ->
+            <<SchemaId/binary, "#/properties/", PropertyName/binary>>;
+        _ ->
+            <<SchemaId/binary, "/", PropertyName/binary>>
     end.
 
 %% @doc Set the value of `Attribute' to `Value' in `JerkTerm'. If the
@@ -165,9 +198,14 @@ get_value({_, Attributes}, AttributeName) ->
                 Value :: attribute_value()) ->
           JerkTerm when JerkTerm :: jerkterm().
 set_value({ID, Obj}, AttributeName, Value) ->
-    NewObj = Obj#{AttributeName => Value},
-    {_, Type, Description} = jerk_catalog:get_schema(ID),
-    case jerk_validator:validate(NewObj, Type, Description) of
+    NewObj =
+        Obj#{AttributeName =>
+                 if is_tuple(Value) andalso tuple_size(Value) =:= 2 ->
+                         element(2, Value);
+                    is_tuple(Value) -> error(badarg);
+                    true -> Value end},
+    Schema = jerk_catalog:get_schema(ID),
+    case validate(ID, Schema, NewObj) of
         true -> {ID, NewObj};
         false -> error(badvalue)
     end.
