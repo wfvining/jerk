@@ -3,7 +3,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 start() ->
-    {ok, Sup} = jerk_sup:start_link().
+    {ok, _Sup} = jerk_sup:start_link().
 
 new_jerkterm_test_() ->
     {"A jerk term can be created for schemas that have been loaded",
