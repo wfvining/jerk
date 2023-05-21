@@ -118,8 +118,10 @@ attributes_test_() ->
 
 nested_term_test_() ->
     {setup, fun start_with_schemas/0, fun stop/1,
-     [fun create_nested_term/0,
-      fun set_nested_value/0]}.
+     {inparallel,
+      [fun create_nested_term/0,
+       fun create_invalid_nested_term/0,
+       fun set_nested_value/0]}}.
 
 create_nested_term() ->
     Term = jerk:new(
@@ -130,6 +132,15 @@ create_nested_term() ->
     ?assertEqual(1, jerk:get_value(Term, <<"b">>)),
     ?assertEqual(<<"test">>,
                  jerk:get_value(jerk:get_value(Term, <<"a">>), <<"name">>)).
+
+create_invalid_nested_term() ->
+    ?assertError(
+       badarg,
+       jerk:new(
+         <<"bar">>,
+         [{<<"b">>, 1},
+          {<<"a">>, [{<<"name">>, <<"test">>}, {<<"id">>, 1.2}]},
+          {<<"c">>, [{<<"d">>, 2}]}])).
 
 set_nested_value() ->
     Term = jerk:new(
