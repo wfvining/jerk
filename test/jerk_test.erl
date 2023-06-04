@@ -116,6 +116,54 @@ attributes_test_() ->
                               <<"bar">>, <<"biz">>),
                <<"bar">>)))}]}}.
 
+start_with_file() ->
+    Path = filename:join(
+             ["/tmp",
+              calendar:system_time_to_rfc3339(
+                erlang:system_time(millisecond),
+                [{unit, millisecond}]) ++ "_jerk_test.json"]),
+    ok = file:write_file(
+           Path,
+           <<"{\"$id\": \"urn:foo\", \"type\": \"object\","
+             "\"properties\": {\"a\": {\"type\": \"integer\"},"
+             "\"b\": {\"type\": \"object\", \"properties\":"
+             "{\"foo\": {\"type\": \"boolean\"}, \"bar\": {"
+             "\"type\": \"string\", \"enum\": [\"abc\", \"def\"]}}}}}">>),
+    {ok, Sup} = start(),
+    {Path, Sup}.
+
+cleanup_with_file({Path, Sup}) ->
+    stop(Sup),
+    file:delete(Path).
+
+load_schema_test_() ->
+    {"Can load a schema from a file.",
+     {setup, fun start_with_file/0, fun cleanup_with_file/1,
+      fun({Path, _}) ->
+              {inorder,
+               [?_test(?assertEqual(ok, jerk:load_schema(Path))),
+                ?_test(
+                   ?assertError(
+                      badarg,
+                      jerk:new(<<"urn:foo">>, [{<<"a">>, <<"should be an integer">>},
+                                               {<<"b">>, []}]))),
+                fun() ->
+                        T = jerk:new(
+                              <<"urn:foo">>,
+                              [{<<"a">>, 1},
+                               {<<"b">>, [{<<"foo">>, true},
+                                          {<<"bar">>, <<"def">>}]}]),
+                        ?assertEqual(1, jerk:get_value(T, <<"a">>)),
+                        ?assertEqual(
+                           <<"def">>,
+                           jerk:get_value(jerk:get_value(T, <<"b">>), <<"bar">>))
+                end]}
+      end}}.
+
+load_no_file_test() ->
+    Path = filename:join(code:priv_dir(jerk), "doesnotexist.json"),
+    ?assertEqual({error, enoent}, jerk:load_schema(Path)).
+
 nested_term_test_() ->
     {setup, fun start_with_schemas/0, fun stop/1,
      {inparallel,

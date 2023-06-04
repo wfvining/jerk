@@ -43,8 +43,13 @@ add_schema(Schema) ->
 %% @doc Load a schema from a file and add it to the Jerk schema catalog.
 -spec load_schema(Path :: file:filename()) -> ok | {error, Reason}
               when Reason :: file:posix() | already_loaded.
-load_schema(_Path) ->
-    error(not_implemented).
+load_schema(Path) ->
+    case file:read_file(Path) of
+        {ok, Schema} ->
+            add_schema(Schema);
+        {error, _} = Error ->
+            Error
+    end.
 
 %% @doc Remove a schema from the Jerk schema catalog.
 -spec remove_schema(SchemaID :: schemaname()) -> ok.
