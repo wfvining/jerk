@@ -25,6 +25,7 @@ assume the schema below has been loaded into the schema database.
 ```json
 {
   "$id": "urn:foo",
+  "type": "object",
   "properties": {
     "a": {"type": "integer"},
     "b": {
@@ -48,9 +49,9 @@ To construct the jerk term that conforms to the schema:
 ```erlang
 T = jerk:new(
         <<"urn:foo">>,
-        [{"a", 1},
-         {"b", [{"foo", true},
-                {"bar", "def"}]}]).
+        [{<<"a">>, 1},
+         {<<"b">>, [{<<"foo">>, true},
+                {<<"bar">>, <<"def">>}]}]).
 ```
 
 The values of properties can be retrieved using
