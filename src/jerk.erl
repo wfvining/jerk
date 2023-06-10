@@ -10,17 +10,17 @@
 -export([new/2, id/1, attributes/1, get_value/2, set_value/3]).
 
 
--export_type([schemaname/0, jerkterm/0, primterm/0,
+-export_type([schemaname/0, object/0, primitive/0,
               attribute_name/0, attribute_value/0,
               type/0]).
 
 -type schemaname() :: binary().
 
--type primterm() :: string:string() | number() | boolean() | null.
+-type primitive() :: string:string() | number() | boolean() | null.
 
 -type attribute_name() :: string:string().
 
--type attribute_value() :: jerkterm() | primterm().
+-type attribute_value() :: object() | primitive().
 
 -type type() :: object
               | integer
@@ -31,8 +31,8 @@
               | null
               | ref.
 
--opaque jerkterm() :: {Id :: binary(),
-                       Attributes :: #{attribute_name() => attribute_value()}}.
+-opaque object() :: {Id :: binary(),
+                     Attributes :: #{attribute_name() => attribute_value()}}.
 
 %% @doc Add a schema to the Jerk schema catalog.
 -spec add_schema(Schema :: string:string()) -> ok | {error, already_loaded}.
@@ -62,7 +62,7 @@ remove_schema(_SchemaID) ->
 %% conform to the schema the call fails with reason `badarg'.
 -spec new(SchemaId :: schemaname(),
           AttributeList :: [{attribute_name(), attribute_value()}]) ->
-          jerkterm().
+          object.
 new(SchemaId, Attributes) ->
     Schema = jerk_catalog:get_schema(SchemaId),
     make_term(SchemaId, Schema, Attributes).
@@ -154,18 +154,18 @@ from_list(AttributeList) ->
       AttributeList).
 
 %% @doc Return the identifier of the schema for `Term'
--spec id(Term :: jerkterm()) -> binary().
+-spec id(Term :: object) -> binary().
 id({ID, _}) ->
     ID.
 
 %% @doc Return the names of all defined attributes in `JerkTerm'.
--spec attributes(JerkTerm :: jerkterm()) -> [attribute_name()].
+-spec attributes(JerkTerm :: object) -> [attribute_name()].
 attributes({_, Attributes}) ->
     maps:keys(Attributes).
 
 %% @doc Return the value of `AttributeName'. If the attribute is not
 %% defined the call fails with reason `badarg'.
--spec get_value(JerkTerm :: jerkterm(),
+-spec get_value(JerkTerm :: object,
                 AttributeName :: attribute_name()) -> attribute_value().
 get_value({SchemaId, Attributes}, AttributeName) ->
     try
@@ -201,7 +201,7 @@ make_uri(URI, Path) ->
 -spec set_value(JerkTerm,
                 Attribute :: attribute_name(),
                 Value :: attribute_value()) ->
-          JerkTerm when JerkTerm :: jerkterm().
+          JerkTerm when JerkTerm :: object.
 set_value({ID, Obj}, AttributeName, Value) ->
     NewObj =
         Obj#{AttributeName =>
