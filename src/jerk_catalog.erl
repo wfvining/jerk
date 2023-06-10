@@ -13,6 +13,11 @@ start_link() ->
 add_schema(Schema) ->
     gen_server:call(?SERVER, {add_schema, Schema}).
 
+%% @doc Return the schema associated with `SchemaID'. `SchemaID' may
+%% refer to a sub-schema or the schema for a specific property
+%% (e.g. "urn:foo#/properties/x"). If no schema exists in the catalog
+%% associated with the schema ID then the call fails with reason
+%% `badarg'.
 get_schema(SchemaID) ->
     case ets:lookup(?SERVER, SchemaID) of
         [] ->
