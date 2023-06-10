@@ -55,6 +55,30 @@ stop(Sup) ->
     exit(Sup, normal),
     timer:sleep(100).
 
+is_primitive_test_() ->
+    {"Check if a term is a jerk:primitive/0.",
+     {setup, fun start_with_schemas/0, fun stop/1,
+      [{inparallel,
+        [?_assert(jerk:is_primitive(X)) ||
+            X <- [[1, 2], 1, 2.2, true, null, <<"asdf">>]]},
+       ?_assert(not jerk:is_primitive(
+                      jerk:new(<<"foo">>, [{<<"bar">>, <<"baz">>}])))]}}.
+
+is_object_test_() ->
+    {"Check if a term is a jerk:object/0.",
+     {setup, fun start_with_schemas/0, fun stop/1,
+      {inparallel,
+       [?_assert(jerk:is_object(jerk:new(<<"foo">>, [{<<"bar">>, <<"baz">>}]))),
+        ?_assert(
+           jerk:is_object(
+             jerk:get_value(
+               jerk:new(
+                 <<"bar">>,
+                 [{<<"a">>, [{<<"name">>, <<"TestName">>}]}]),
+               <<"a">>))),
+        [?_assert(not jerk:is_object(X)) ||
+            X <- [[1, 2], 1, 2.2, true, null, <<"asdf">>]]]}}}.
+
 get_id_test_() ->
     {"Can get the id of the schema that applies to a jerk term.",
      {setup,

@@ -7,7 +7,8 @@
 %% Schema management API
 -export([add_schema/1, load_schema/1, remove_schema/1]).
 
--export([new/2, id/1, attributes/1, get_value/2, set_value/3]).
+-export([new/2, id/1, attributes/1, get_value/2, set_value/3,
+         is_object/1, is_primitive/1]).
 
 
 -export_type([schemaname/0, object/0, primitive/0,
@@ -214,3 +215,18 @@ set_value({ID, Obj}, AttributeName, Value) ->
         true -> {ID, NewObj};
         false -> error(badvalue)
     end.
+
+is_primitive(X) ->
+    is_list(X)
+        orelse is_number(X)
+        orelse is_boolean(X)
+        orelse is_binary(X)
+        orelse X =:= null.
+
+is_object({URI, Map}) when is_map(Map), is_binary(URI) ->
+    try jerk_catalog:get_schema(URI) of
+        _ -> true
+    catch
+        error:badarg -> false
+    end;
+is_object(_) -> false.
