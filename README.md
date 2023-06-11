@@ -51,7 +51,7 @@ T = jerk:new(
         <<"urn:foo">>,
         [{<<"a">>, 1},
          {<<"b">>, [{<<"foo">>, true},
-                {<<"bar">>, <<"def">>}]}]).
+                    {<<"bar">>, <<"def">>}]}]).
 ```
 
 The values of properties can be retrieved using
