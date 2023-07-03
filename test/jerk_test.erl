@@ -47,8 +47,23 @@ start_with_schemas() ->
                         <<"required">> => [<<"name">>]}},
             <<"required">> => [<<"a">>],
             <<"additionalProperties">> => false}),
+    SchemaArr =
+        jiffy:encode(
+          #{<<"$id">> => <<"arr">>,
+            <<"type">> => <<"object">>,
+            <<"definitions">> =>
+                #{<<"Element">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> => #{<<"x">> => #{<<"type">> => <<"integer">>}},
+                        <<"required">> => [<<"x">>]}},
+            <<"properties">> =>
+                #{<<"arr">> => #{<<"type">> => <<"array">>,
+                                 <<"items">> => #{<<"$ref">> => <<"#/definitions/Element">>},
+                                 <<"minItems">> => 1}},
+           <<"required">> => [<<"arr">>]}),
     ok = jerk:add_schema(SchemaFoo),
     ok = jerk:add_schema(SchemaBar),
+    ok = jerk:add_schema(SchemaArr),
     Sup.
 
 stop(Sup) ->
@@ -195,6 +210,7 @@ nested_term_test_() ->
        fun create_invalid_nested_term/0,
        fun set_nested_value/0]}}.
 
+
 create_nested_term() ->
     Term = jerk:new(
              <<"bar">>,
@@ -252,3 +268,12 @@ set_nested_value() ->
     ?assertError(
        badvalue,
        jerk:set_value(Term, <<"a">>, <<"illegal">>)).
+
+object_in_array_test_() ->
+    {"Can construct a term with an array of objects",
+     {setup, fun start_with_schemas/0, fun stop/1,
+      [fun construct_object_with_array_of_objects/0]}}.
+
+construct_object_with_array_of_objects() ->
+    jerk:new(<<"arr">>,
+             [{<<"arr">>, [[{<<"x">>, 1}], [{<<"x">>, 2}]]}]).

@@ -1,12 +1,26 @@
 -module(jerk_loader).
 
--export([load_json/1]).
+-export([load_json/1, from_anonymous/2]).
 
 %% @doc Load a schema from a JSON string.
 -spec load_json(Schema :: string:string()) -> [{binary(), jerk:type(), any()}].
 load_json(Schema) ->
     JSONTerm = jiffy:decode(Schema, [return_maps]),
     load(JSONTerm, []).
+
+%% @doc Construct a named schema from an anonymous schema.
+%%
+%% This is useful, for example, when constructing schemas for the
+%% elements of an array that is subject to an `items'
+%% constraint. Since the elements are unnamed the schema that
+%% constrains them is anonymous, but we need to give it a name so it
+%% will work with the existing construction and validation functions.
+%%
+%% @see jerk_constraint:items/2
+-spec from_anonymous(Id :: binary(), {Type :: jerk:type(), Description})
+                    -> {binary(), jerk:type(), Description}.
+from_anonymous(Id, {Type, Description}) ->
+    new_record(Type, Id, Description).
 
 load(#{<<"$id">> := SchemaID} = Schema, Schemas) ->
     load_definition(SchemaID, Schema, Schemas).

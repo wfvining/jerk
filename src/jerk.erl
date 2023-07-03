@@ -74,10 +74,31 @@ make_term(BaseURI, {_Id, ref, Path}, Value) ->
     %% TODO differentiate between absolute and relative URIs
     URI = <<BaseURI/binary, Path/binary>>,
     make_term(BaseURI, jerk_catalog:get_schema(URI), Value);
+make_term(BaseURI, {Id, array, Constraints} = Description, Value) ->
+    Arr = case lists:keyfind(allowed, 1, Constraints) of
+              {allowed, ElementDescription} ->
+                  Schema = jerk_loader:from_anonymous(
+                             <<Id/binary, "/$array-element">>,
+                             ElementDescription),
+                  [make_array_element(BaseURI, Schema, V)
+                   || V <- Value];
+              false ->
+                  Value
+          end,
+    case validate(BaseURI, Description, Arr) of
+        true -> Value;
+        false -> error(badarg)
+    end;
 make_term(BaseURI, Description, Value) ->
     case validate(BaseURI, Description, Value) of
         true -> Value;
         false -> error(badarg)
+    end.
+
+make_array_element(BaseURI, Schema, Value) ->
+    case make_term(BaseURI, Schema, Value) of
+        {_, Term} -> Term;
+        V -> V
     end.
 
 make_object(BaseURI, SchemaId, {Properties, Required, Frozen}, Attributes) ->
