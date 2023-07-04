@@ -86,7 +86,7 @@ make_term(BaseURI, {Id, array, Constraints} = Description, Value) ->
                   Value
           end,
     case validate(BaseURI, Description, Arr) of
-        true -> Value;
+        true -> Arr;
         false -> error(badarg)
     end;
 make_term(BaseURI, Description, Value) ->
