@@ -47,23 +47,8 @@ start_with_schemas() ->
                         <<"required">> => [<<"name">>]}},
             <<"required">> => [<<"a">>],
             <<"additionalProperties">> => false}),
-    SchemaArr =
-        jiffy:encode(
-          #{<<"$id">> => <<"arr">>,
-            <<"type">> => <<"object">>,
-            <<"definitions">> =>
-                #{<<"Element">> =>
-                      #{<<"type">> => <<"object">>,
-                        <<"properties">> => #{<<"x">> => #{<<"type">> => <<"integer">>}},
-                        <<"required">> => [<<"x">>]}},
-            <<"properties">> =>
-                #{<<"arr">> => #{<<"type">> => <<"array">>,
-                                 <<"items">> => #{<<"$ref">> => <<"#/definitions/Element">>},
-                                 <<"minItems">> => 1}},
-           <<"required">> => [<<"arr">>]}),
     ok = jerk:add_schema(SchemaFoo),
     ok = jerk:add_schema(SchemaBar),
-    ok = jerk:add_schema(SchemaArr),
     Sup.
 
 stop(Sup) ->
@@ -269,11 +254,108 @@ set_nested_value() ->
        badvalue,
        jerk:set_value(Term, <<"a">>, <<"illegal">>)).
 
-object_in_array_test_() ->
-    {"Can construct a term with an array of objects",
-     {setup, fun start_with_schemas/0, fun stop/1,
-      [fun construct_object_with_array_of_objects/0]}}.
+init_array_schemas() ->
+    {ok, Sup} = start(),
+    SchemaArrObj =
+        jiffy:encode(
+          #{<<"$id">> => <<"arrObj">>,
+            <<"type">> => <<"object">>,
+            <<"definitions">> =>
+                #{<<"Element">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> => #{<<"x">> => #{<<"type">> => <<"integer">>}},
+                        <<"required">> => [<<"x">>]}},
+            <<"properties">> =>
+                #{<<"arr">> => #{<<"type">> => <<"array">>,
+                                 <<"items">> => #{<<"$ref">> => <<"#/definitions/Element">>},
+                                 <<"minItems">> => 1}},
+           <<"required">> => [<<"arr">>]}),
+    SchemaArrInt =
+        jiffy:encode(
+          #{<<"$id">> => <<"arrInt">>,
+            <<"type">> => <<"object">>,
+            <<"definitions">> =>
+                #{<<"Element">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> => #{<<"x">> => #{<<"type">> => <<"integer">>}},
+                        <<"required">> => [<<"x">>]}},
+            <<"properties">> =>
+                #{<<"arr">> => #{<<"type">> => <<"array">>,
+                                 <<"items">> => #{<<"type">> => <<"integer">>,
+                                                  <<"maximum">> => 10},
+                                 <<"maxItems">> => 2}},
+           <<"required">> => [<<"arr">>]}),
+    SchemaArrAnon =
+                jiffy:encode(
+          #{<<"$id">> => <<"arrAnon">>,
+            <<"type">> => <<"object">>,
+            <<"properties">> =>
+                #{<<"arr">> => #{<<"type">> => <<"array">>,
+                                 <<"items">> =>
+                                     #{<<"type">> => <<"object">>,
+                                       <<"properties">> => #{<<"x">> => #{<<"type">> => <<"integer">>}},
+                                       <<"required">> => [<<"x">>]}},
+                                 <<"minItems">> => 1},
+           <<"required">> => [<<"arr">>]}),
+    ok = jerk:add_schema(SchemaArrObj),
+    ok = jerk:add_schema(SchemaArrInt),
+    ok = jerk:add_schema(SchemaArrAnon),
+    Sup.
 
-construct_object_with_array_of_objects() ->
-    jerk:new(<<"arr">>,
-             [{<<"arr">>, [[{<<"x">>, 1}], [{<<"x">>, 2}]]}]).
+array_test_() ->
+    {setup, fun init_array_schemas/0, fun stop/1,
+     {inparallel,
+      [{"construct a term with an empty array",
+        fun () ->
+                T = jerk:new(<<"arrInt">>, [{<<"arr">>, []}]),
+                ?assertEqual([], jerk:get_value(T, <<"arr">>))
+        end},
+       {"construct an array with an illegal number of items",
+        [?_test(?assertError(badarg, jerk:new(<<"arrInt">>, [{<<"arr">>, [1, 2, 3]}]))),
+         ?_test(?assertError(badarg, jerk:new(<<"arrObj">>, [{<<"arr">>, []}])))]},
+       {"can't construct a term with an array containing "
+        "a value that violates a constraint",
+        [?_test(?assertError(badarg, jerk:new(<<"arrInt">>, [{<<"arr">>, [11]}]))),
+         ?_test(?assertError(badarg, jerk:new(<<"arrInt">>, [{<<"arr">>, [10, 11]}])))]},
+       {"update an array",
+        [fun update_array/0,
+         fun update_array_too_short/0,
+         fun update_array_too_long/0,
+         fun update_array_illegal_value/0]},
+       {"can construct a term with an array of objects where the schema "
+        "uses an anonymous object schema for array items",
+        construct_object_with_array_of_objects(<<"arrAnon">>)},
+       {"can construct a term with an array of objects",
+        construct_object_with_array_of_objects(<<"arrObj">>)}]}}.
+
+update_array() ->
+    T = jerk:new(<<"arrObj">>, [{<<"arr">>, [[{<<"x">>, 1}]]}]),
+    [X] = jerk:get_value(T, <<"arr">>),
+    X1 = jerk:set_value(X, <<"x">>, 2),
+    T1 = jerk:set_value(T, <<"arr">>, [X1]),
+    ?assertEqual([X1], jerk:get_value(T1, <<"arr">>)).
+
+update_array_too_short() ->
+    T = jerk:new(<<"arrObj">>, [{<<"arr">>, [[{<<"x">>, 1}]]}]),
+    ?assertError(badvalue, jerk:set_value(T, <<"arr">>, [])).
+
+update_array_too_long() ->
+    T = jerk:new(<<"arrInt">>, [{<<"arr">>, [10]}]),
+    ?assertError(badvalue, jerk:set_value(T, <<"arr">>, [1, 2, 3])).
+
+update_array_illegal_value() ->
+    T = jerk:new(<<"arrInt">>, [{<<"arr">>, []}]),
+    ?assertError(badvalue, jerk:set_value(T, <<"arr">>, [11])).
+
+construct_object_with_array_of_objects(Schema) ->
+    {"array of objects with schema " ++ binary_to_list(Schema),
+     fun () ->
+             T = jerk:new(Schema,
+                          [{<<"arr">>, [[{<<"x">>, 1}], [{<<"x">>, 2}]]}]),
+             [A1, A2] = jerk:get_value(T, <<"arr">>),
+             ?assertEqual(1, jerk:get_value(A1, <<"x">>)),
+             ?assertEqual(2, jerk:get_value(A2, <<"x">>)),
+             A1New = jerk:set_value(A1, <<"x">>, 3),
+             ?assertEqual(3, jerk:get_value(A1New, <<"x">>)),
+             ?assertError(badvalue, jerk:set_value(A1, <<"x">>, <<"not an integer">>))
+     end}.

@@ -30,18 +30,27 @@ get_subschema(SchemaURI) ->
     case string:split(SchemaURI, <<"#/">>) of
         [BaseURI, Path] ->
             Schema = get_schema(BaseURI),
-            get_subschema(Path, Schema);
+            get_subschema(binary:split(Path, <<"/">>, [global]), Schema);
         [SchemaURI] ->
             error(badarg)
     end.
 
-get_subschema(<<"properties/", Id/binary>>,
+get_subschema([], Schema) ->
+    Schema;
+get_subschema([<<"properties">>, Id | Rest],
               {_, object, {Properties, _, _}}) ->
     case lists:keyfind(Id, 1, Properties) of
         false ->
             error(badarg);
         Description ->
-            Description
+            get_subschema(Rest, Description)
+    end;
+get_subschema([<<"$array-item">> | Rest], {_, array, Constraints}) ->
+    case lists:keyfind(allowed, 1, Constraints) of
+        {allowed, {Type, Description}} ->
+            {<<"$array-item">>, Type, Description};
+        _ ->
+            error(badarg)
     end.
 
 init([]) ->

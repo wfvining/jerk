@@ -78,7 +78,7 @@ make_term(BaseURI, {Id, array, Constraints} = Description, Value) ->
     Arr = case lists:keyfind(allowed, 1, Constraints) of
               {allowed, ElementDescription} ->
                   Schema = jerk_loader:from_anonymous(
-                             <<Id/binary, "/$array-element">>,
+                             make_uri(BaseURI, <<"#/properties/", Id/binary, "/$array-item">>),
                              ElementDescription),
                   [make_array_element(BaseURI, Schema, V)
                    || V <- Value];
@@ -97,8 +97,8 @@ make_term(BaseURI, Description, Value) ->
 
 make_array_element(BaseURI, Schema, Value) ->
     case make_term(BaseURI, Schema, Value) of
-        {_, Term} -> Term;
-        V -> V
+        {_, X} -> X;
+        X -> X
     end.
 
 make_object(BaseURI, SchemaId, {Properties, Required, Frozen}, Attributes) ->
@@ -197,6 +197,11 @@ get_value({SchemaId, Attributes}, AttributeName) ->
             error({undefined, AttributeName})
     end.
 
+maybe_term(SchemaId, PropertyName, Value) when is_list(Value) ->
+    [if is_map(V) ->
+             {make_uri(SchemaId, <<"#/properties/", PropertyName/binary, "/$array-item">>), V};
+        true -> V
+     end || V <- Value];
 maybe_term(SchemaId, PropertyName, Value) when is_map(Value) ->
     {_, object, {Properties, _, _}} = jerk_catalog:get_schema(SchemaId),
     case lists:keyfind(PropertyName, 1, Properties) of
@@ -219,23 +224,29 @@ make_uri(URI, Path) ->
 
 %% @doc Set the value of `Attribute' to `Value' in `JerkTerm'. If the
 %% attribute is not allowed in schema of `JerkTerm' or if the value is
-%% not allowed the call fails with reason `badarg'.
+%% not allowed the call fails with reason `badvalue'.
 -spec set_value(JerkTerm,
                 Attribute :: attribute_name(),
                 Value :: attribute_value()) ->
           JerkTerm when JerkTerm :: object.
 set_value({ID, Obj}, AttributeName, Value) ->
+    Value1 = prep_value(Value),
     NewObj =
-        Obj#{AttributeName =>
-                 if is_tuple(Value) andalso tuple_size(Value) =:= 2 ->
-                         element(2, Value);
-                    is_tuple(Value) -> error(badarg);
-                    true -> Value end},
+        Obj#{AttributeName => Value1},
     Schema = jerk_catalog:get_schema(ID),
     case validate(ID, Schema, NewObj) of
         true -> {ID, NewObj};
         false -> error(badvalue)
     end.
+
+prep_value(Value) when is_list(Value) ->
+    [prep_value(V) || V <- Value];
+prep_value(Value) when is_tuple(Value), tuple_size(Value) =:= 2 ->
+    element(2, Value);
+prep_value(Value) when is_tuple(Value) ->
+    error(badarg);
+prep_value(Value) ->
+    Value.
 
 is_primitive(X) ->
     is_list(X)
