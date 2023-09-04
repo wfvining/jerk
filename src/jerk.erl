@@ -203,7 +203,7 @@ maybe_term(SchemaId, PropertyName, Value) when is_list(Value) ->
         true -> V
      end || V <- Value];
 maybe_term(SchemaId, PropertyName, Value) when is_map(Value) ->
-    {_, object, {Properties, _, _}} = jerk_catalog:get_schema(SchemaId),
+    {_, object, {Properties, _, _}} = resolve_schema(SchemaId, jerk_catalog:get_schema(SchemaId)),
     case lists:keyfind(PropertyName, 1, Properties) of
         false ->
             Value;
@@ -215,6 +215,11 @@ maybe_term(SchemaId, PropertyName, Value) when is_map(Value) ->
     end;
 maybe_term(_, _, Value) ->
     Value.
+
+resolve_schema(_URI, {_, object, _} = S) ->
+    S;
+resolve_schema(URI, {_, ref, RefPath}) ->
+    jerk_catalog:get_schema(make_uri(URI, RefPath)).
 
 make_uri(URI, <<"#/", _/binary>> = Path) ->
     [BaseURI|_] = string:split(URI, <<"#/">>),

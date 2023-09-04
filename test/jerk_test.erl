@@ -25,7 +25,8 @@ start_with_schemas() ->
             <<"type">> => <<"object">>,
             <<"properties">> =>
                 #{<<"bar">> => #{<<"type">> => <<"string">>,
-                                 <<"enum">> => [<<"biz">>, <<"baz">>]}}}),
+                                 <<"enum">> => [<<"biz">>, <<"baz">>]},
+                  <<"flag">> => #{<<"type">> => <<"boolean">>}}}),
     SchemaBar =
         jiffy:encode(
           #{<<"$id">> => <<"bar">>,
@@ -54,6 +55,14 @@ start_with_schemas() ->
 stop(Sup) ->
     exit(Sup, normal),
     timer:sleep(100).
+
+boolean_test_() ->
+    {"Can create a term with a boolean property",
+     {setup, fun start_with_schemas/0, fun stop/1,
+      [?_test(
+          ?assert(
+             jerk:get_value(jerk:new(<<"foo">>, [{<<"flag">>, true}]),
+                            <<"flag">>)))]}}.
 
 is_primitive_test_() ->
     {"Check if a term is a jerk:primitive/0.",
@@ -270,6 +279,23 @@ init_array_schemas() ->
                                  <<"items">> => #{<<"$ref">> => <<"#/definitions/Element">>},
                                  <<"minItems">> => 1}},
            <<"required">> => [<<"arr">>]}),
+    SchemaArrNestedRef =
+        jiffy:encode(
+          #{<<"$id">> => <<"arrNestedRef">>,
+            <<"type">> => <<"object">>,
+            <<"definitions">> =>
+                #{<<"Element">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> => #{<<"x">> => #{<<"$ref">> => <<"#/definitions/X">>}},
+                        <<"required">> => [<<"x">>]},
+                  <<"X">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> => #{<<"y">> => #{<<"type">> => <<"integer">>}}}},
+            <<"properties">> =>
+                #{<<"arr">> => #{<<"type">> => <<"array">>,
+                                 <<"items">> => #{<<"$ref">> => <<"#/definitions/Element">>},
+                                 <<"minItems">> => 1}},
+           <<"required">> => [<<"arr">>]}),
     SchemaArrInt =
         jiffy:encode(
           #{<<"$id">> => <<"arrInt">>,
@@ -286,7 +312,7 @@ init_array_schemas() ->
                                  <<"maxItems">> => 2}},
            <<"required">> => [<<"arr">>]}),
     SchemaArrAnon =
-                jiffy:encode(
+        jiffy:encode(
           #{<<"$id">> => <<"arrAnon">>,
             <<"type">> => <<"object">>,
             <<"properties">> =>
@@ -297,9 +323,18 @@ init_array_schemas() ->
                                        <<"required">> => [<<"x">>]}},
                                  <<"minItems">> => 1},
            <<"required">> => [<<"arr">>]}),
+    SchemaArrUnconstrained =
+        jiffy:encode(
+          #{<<"$id">> => <<"arrUnconstrained">>,
+            <<"type">> => <<"object">>,
+            <<"properties">> =>
+                #{<<"arr">> => #{<<"type">> => <<"array">>}},
+           <<"required">> => [<<"arr">>]}),
     ok = jerk:add_schema(SchemaArrObj),
     ok = jerk:add_schema(SchemaArrInt),
     ok = jerk:add_schema(SchemaArrAnon),
+    ok = jerk:add_schema(SchemaArrUnconstrained),
+    ok = jerk:add_schema(SchemaArrNestedRef),
     Sup.
 
 array_test_() ->
@@ -310,6 +345,8 @@ array_test_() ->
                 T = jerk:new(<<"arrInt">>, [{<<"arr">>, []}]),
                 ?assertEqual([], jerk:get_value(T, <<"arr">>))
         end},
+       {"access a term from an array element defined be nested references",
+        fun access_array_elem_nested_ref/0},
        {"construct an array with an illegal number of items",
         [?_test(?assertError(badarg, jerk:new(<<"arrInt">>, [{<<"arr">>, [1, 2, 3]}]))),
          ?_test(?assertError(badarg, jerk:new(<<"arrObj">>, [{<<"arr">>, []}])))]},
@@ -335,6 +372,12 @@ update_array() ->
     T1 = jerk:set_value(T, <<"arr">>, [X1]),
     ?assertEqual([X1], jerk:get_value(T1, <<"arr">>)).
 
+access_array_elem_nested_ref() ->
+    T = jerk:new(<<"arrNestedRef">>, [{<<"arr">>, [[{<<"x">>, [{<<"y">>, 1}]}]]}]),
+    [Elem] = jerk:get_value(T, <<"arr">>),
+    X = jerk:get_value(Elem, <<"x">>),
+    ?assertEqual(1, jerk:get_value(X, <<"y">>)).
+
 update_array_too_short() ->
     T = jerk:new(<<"arrObj">>, [{<<"arr">>, [[{<<"x">>, 1}]]}]),
     ?assertError(badvalue, jerk:set_value(T, <<"arr">>, [])).
@@ -359,3 +402,34 @@ construct_object_with_array_of_objects(Schema) ->
              ?assertEqual(3, jerk:get_value(A1New, <<"x">>)),
              ?assertError(badvalue, jerk:set_value(A1, <<"x">>, <<"not an integer">>))
      end}.
+
+nested_ref_test_() ->
+    {"operate on objects that include multiple levels of '$ref' references",
+     {setup, fun init_nested_ref_schemas/0, fun stop/1,
+      [fun access_nested/0]}}.
+
+init_nested_ref_schemas() ->
+    {ok, Sup} = start(),
+    Nested =
+        jiffy:encode(
+          #{<<"$id">> => <<"nested">>,
+            <<"type">> => <<"object">>,
+            <<"definitions">> =>
+                #{<<"Element">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> => #{<<"x">> => #{<<"$ref">> => <<"#/definitions/X">>}},
+                        <<"required">> => [<<"x">>]},
+                  <<"X">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> => #{<<"y">> => #{<<"type">> => <<"integer">>}}}},
+            <<"properties">> =>
+                #{<<"elem">> => #{<<"$ref">> => <<"#/definitions/Element">>}},
+            <<"required">> => [<<"elem">>]}),
+    jerk:add_schema(Nested),
+    Sup.
+
+access_nested() ->
+    T = jerk:new(<<"nested">>, [{<<"elem">>, [{<<"x">>, [{<<"y">>, 1}]}]}]),
+    Elem = jerk:get_value(T, <<"elem">>),
+    X = jerk:get_value(Elem, <<"x">>),
+    ?assertEqual(1, jerk:get_value(X, <<"y">>)).
