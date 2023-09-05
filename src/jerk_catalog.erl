@@ -28,6 +28,10 @@ get_schema(SchemaID) ->
 
 get_subschema(SchemaURI) ->
     case string:split(SchemaURI, <<"#/">>) of
+        [BaseURI, <<"definitions/", Rest/binary>>] ->
+            [Id|Path] = binary:split(Rest, <<"/">>, [global]),
+            Schema = get_schema(<<BaseURI/binary, "#/definitions/", Id/binary>>),
+            get_subschema(Path, Schema);
         [BaseURI, Path] ->
             Schema = get_schema(BaseURI),
             get_subschema(binary:split(Path, <<"/">>, [global]), Schema);

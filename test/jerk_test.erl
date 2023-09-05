@@ -290,7 +290,12 @@ init_array_schemas() ->
                         <<"required">> => [<<"x">>]},
                   <<"X">> =>
                       #{<<"type">> => <<"object">>,
-                        <<"properties">> => #{<<"y">> => #{<<"type">> => <<"integer">>}}}},
+                        <<"properties">> => #{<<"y">> => #{<<"type">> => <<"integer">>},
+                                              <<"z">> => #{<<"type">> => <<"array">>,
+                                                           <<"items">> => #{<<"$ref">> => <<"#/definitions/Z">>}}}},
+                  <<"Z">> =>
+                      #{<<"type">> => <<"object">>,
+                        <<"properties">> => #{<<"p">> => #{<<"type">> => <<"integer">>}}}},
             <<"properties">> =>
                 #{<<"arr">> => #{<<"type">> => <<"array">>,
                                  <<"items">> => #{<<"$ref">> => <<"#/definitions/Element">>},
@@ -346,7 +351,8 @@ array_test_() ->
                 ?assertEqual([], jerk:get_value(T, <<"arr">>))
         end},
        {"access a term from an array element defined be nested references",
-        fun access_array_elem_nested_ref/0},
+        [fun access_array_elem_nested_ref/0,
+         fun access_nested_array_element/0]},
        {"construct an array with an illegal number of items",
         [?_test(?assertError(badarg, jerk:new(<<"arrInt">>, [{<<"arr">>, [1, 2, 3]}]))),
          ?_test(?assertError(badarg, jerk:new(<<"arrObj">>, [{<<"arr">>, []}])))]},
@@ -376,7 +382,19 @@ access_array_elem_nested_ref() ->
     T = jerk:new(<<"arrNestedRef">>, [{<<"arr">>, [[{<<"x">>, [{<<"y">>, 1}]}]]}]),
     [Elem] = jerk:get_value(T, <<"arr">>),
     X = jerk:get_value(Elem, <<"x">>),
+    ?assert(jerk:is_object(X)),
     ?assertEqual(1, jerk:get_value(X, <<"y">>)).
+
+access_nested_array_element() ->
+    T = jerk:new(<<"arrNestedRef">>,
+                 [{<<"arr">>, [[{<<"x">>, [{<<"y">>, 1},
+                                           {<<"z">>, [[{<<"p">>, 1}], [{<<"p">>, 2}]]}]}]]}]),
+    [Elem] = jerk:get_value(T, <<"arr">>),
+    X = jerk:get_value(Elem, <<"x">>),
+    [Z1, Z2] = jerk:get_value(X, <<"z">>), %% XXX The schema id becomes invalid here
+    ?assert(jerk:is_object(Z1)),
+    ?assertEqual(1, jerk:get_value(Z1, <<"p">>)),
+    ?assertEqual(2, jerk:get_value(Z2, <<"p">>)).
 
 update_array_too_short() ->
     T = jerk:new(<<"arrObj">>, [{<<"arr">>, [[{<<"x">>, 1}]]}]),
@@ -432,4 +450,5 @@ access_nested() ->
     T = jerk:new(<<"nested">>, [{<<"elem">>, [{<<"x">>, [{<<"y">>, 1}]}]}]),
     Elem = jerk:get_value(T, <<"elem">>),
     X = jerk:get_value(Elem, <<"x">>),
+    ?assert(jerk:is_object(X)),
     ?assertEqual(1, jerk:get_value(X, <<"y">>)).

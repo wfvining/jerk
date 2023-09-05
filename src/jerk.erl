@@ -203,29 +203,55 @@ maybe_term(SchemaId, PropertyName, Value) when is_list(Value) ->
         true -> V
      end || V <- Value];
 maybe_term(SchemaId, PropertyName, Value) when is_map(Value) ->
-    {_, object, {Properties, _, _}} = resolve_schema(SchemaId, jerk_catalog:get_schema(SchemaId)),
-    case lists:keyfind(PropertyName, 1, Properties) of
-        false ->
-            Value;
-        {_, ref, Path} ->
-            {make_uri(SchemaId, Path), Value};
-        {_, _, _} ->
-            {make_uri(SchemaId, <<"#/properties/", PropertyName/binary>>),
-             Value}
+    case lists:reverse(binary:split(SchemaId, <<"/">>, [global])) of
+        [<<"$array-item">>|_] ->
+            case jerk_catalog:get_schema(SchemaId) of
+                {_, ref, Path} ->
+                    maybe_term(make_uri(SchemaId, Path), PropertyName, Value);
+                {_, object, {Properties, _, _}} ->
+                    case lists:keyfind(PropertyName, 1, Properties) of
+                        false -> Value;
+                        {_, ref, Path} -> {make_uri(SchemaId, Path), Value};
+                        {_, _, _} -> {make_uri(SchemaId, <<"/properties/", PropertyName/binary>>)}
+                    end
+            end;
+        _ ->
+            {_, object, {Properties, _, _}} = jerk_catalog:get_schema(SchemaId),
+            case lists:keyfind(PropertyName, 1, Properties) of
+                false ->
+                    Value;
+                {_, ref, Path} ->
+                    {make_uri(SchemaId, Path), Value};
+                {_, _, _} ->
+                    {make_uri(SchemaId, <<"#/properties/", PropertyName/binary>>),
+                     Value}
+            end
     end;
 maybe_term(_, _, Value) ->
     Value.
 
-resolve_schema(_URI, {_, object, _} = S) ->
-    S;
-resolve_schema(URI, {_, ref, RefPath}) ->
-    jerk_catalog:get_schema(make_uri(URI, RefPath)).
-
-make_uri(URI, <<"#/", _/binary>> = Path) ->
-    [BaseURI|_] = string:split(URI, <<"#/">>),
+combine_uri(URI, <<"#/properties", PropertyName/binary>> = Path) ->
+    case binary:split(URI, <<"#/">>) of
+        [URI] ->
+            <<URI/binary, Path/binary>>;
+        [BaseURI, <<"properties", _/binary>>] ->
+            <<BaseURI/binary, Path/binary>>;
+        [_BaseURI, _ExtPath] ->
+            <<URI/binary, "/properties", PropertyName/binary>>
+    end;
+combine_uri(URI, <<"#/", _/binary>> = Path) ->
+    [BaseURI|_] = binary:split(URI, <<"#/">>),
     <<BaseURI/binary, Path/binary>>;
-make_uri(URI, Path) ->
+combine_uri(URI, Path) ->
     <<URI/binary, Path/binary>>.
+
+make_uri(URI, Path) ->
+    combine_uri(URI, Path).
+%% make_uri(URI, <<"#/", _/binary>> = Path) ->
+%%     [BaseURI|_] = string:split(URI, <<"#/">>),
+%%     <<BaseURI/binary, Path/binary>>;
+%% make_uri(URI, Path) ->
+%%     <<URI/binary, Path/binary>>.
 
 %% @doc Set the value of `Attribute' to `Value' in `JerkTerm'. If the
 %% attribute is not allowed in schema of `JerkTerm' or if the value is
