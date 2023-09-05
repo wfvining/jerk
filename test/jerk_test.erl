@@ -301,6 +301,19 @@ init_array_schemas() ->
                                  <<"items">> => #{<<"$ref">> => <<"#/definitions/Element">>},
                                  <<"minItems">> => 1}},
            <<"required">> => [<<"arr">>]}),
+    %% [{"a", [[{"b", [[{"c", 1}, {"c", 2}]]}]]}],
+    SchemaArrNested2 =
+        jiffy:encode(
+          #{<<"$id">> => <<"arrNested2">>,
+            <<"type">> => <<"object">>,
+            <<"properties">> =>
+                #{<<"a">> => #{<<"type">> => <<"array">>, <<"items">> => #{<<"$ref">> => <<"#/definitions/A">>}}},
+            <<"definitions">> =>
+                #{<<"A">> => #{<<"type">> => <<"object">>,
+                               <<"properties">> => #{<<"b">> => #{<<"type">> => <<"array">>,
+                                                                  <<"items">> => #{<<"$ref">> => <<"#/definitions/B">>}}}},
+                  <<"B">> => #{<<"type">> => <<"object">>,
+                               <<"properties">> => #{<<"c">> => #{<<"type">> => <<"integer">>}}}}}),
     SchemaArrInt =
         jiffy:encode(
           #{<<"$id">> => <<"arrInt">>,
@@ -340,6 +353,7 @@ init_array_schemas() ->
     ok = jerk:add_schema(SchemaArrAnon),
     ok = jerk:add_schema(SchemaArrUnconstrained),
     ok = jerk:add_schema(SchemaArrNestedRef),
+    ok = jerk:add_schema(SchemaArrNested2),
     Sup.
 
 array_test_() ->
@@ -352,7 +366,8 @@ array_test_() ->
         end},
        {"access a term from an array element defined be nested references",
         [fun access_array_elem_nested_ref/0,
-         fun access_nested_array_element/0]},
+         fun access_nested_array_element/0,
+         fun access_immediately_nested_arrays/0]},
        {"construct an array with an illegal number of items",
         [?_test(?assertError(badarg, jerk:new(<<"arrInt">>, [{<<"arr">>, [1, 2, 3]}]))),
          ?_test(?assertError(badarg, jerk:new(<<"arrObj">>, [{<<"arr">>, []}])))]},
@@ -391,10 +406,18 @@ access_nested_array_element() ->
                                            {<<"z">>, [[{<<"p">>, 1}], [{<<"p">>, 2}]]}]}]]}]),
     [Elem] = jerk:get_value(T, <<"arr">>),
     X = jerk:get_value(Elem, <<"x">>),
-    [Z1, Z2] = jerk:get_value(X, <<"z">>), %% XXX The schema id becomes invalid here
+    [Z1, Z2] = jerk:get_value(X, <<"z">>),
     ?assert(jerk:is_object(Z1)),
     ?assertEqual(1, jerk:get_value(Z1, <<"p">>)),
     ?assertEqual(2, jerk:get_value(Z2, <<"p">>)).
+
+access_immediately_nested_arrays() ->
+    T = jerk:new(<<"arrNested2">>, [{<<"a">>, [[{<<"b">>, [[{<<"c">>, 1}], [{<<"c">>, 2}]]}]]}]),
+    [A] = jerk:get_value(T, <<"a">>),
+    [B1, B2] = jerk:get_value(A, <<"b">>),
+    ?assert(jerk:is_object(B1)),
+    ?assertEqual(1, jerk:get_value(B1, <<"c">>)),
+    ?assertEqual(2, jerk:get_value(B2, <<"c">>)).
 
 update_array_too_short() ->
     T = jerk:new(<<"arrObj">>, [{<<"arr">>, [[{<<"x">>, 1}]]}]),

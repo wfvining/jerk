@@ -198,8 +198,15 @@ get_value({SchemaId, Attributes}, AttributeName) ->
     end.
 
 maybe_term(SchemaId, PropertyName, Value) when is_list(Value) ->
+    PropertyPrefix =
+        case lists:reverse(binary:split(SchemaId, <<"/">>, [global])) of
+            [<<"$array-item">>|_] ->
+                <<"/properties/">>;
+            _ ->
+                <<"#/properties/">>
+        end,
     [if is_map(V) ->
-             {make_uri(SchemaId, <<"#/properties/", PropertyName/binary, "/$array-item">>), V};
+             {make_uri(SchemaId, <<PropertyPrefix/binary, PropertyName/binary, "/$array-item">>), V};
         true -> V
      end || V <- Value];
 maybe_term(SchemaId, PropertyName, Value) when is_map(Value) ->
