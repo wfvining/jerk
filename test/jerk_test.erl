@@ -56,6 +56,14 @@ stop(Sup) ->
     exit(Sup, normal),
     timer:sleep(100).
 
+to_map_test_() ->
+    {"can convert an jerk term to a map.",
+     {setup, fun start_with_schemas/0, fun stop/1,
+      [fun() ->
+               T = jerk:new(<<"foo">>, [{<<"flag">>, false}, {<<"bar">>, <<"biz">>}]),
+               ?assertEqual(#{<<"bar">> => <<"biz">>, <<"flag">> => false}, jerk:to_map(T))
+       end]}}.
+
 boolean_test_() ->
     {"Can create a term with a boolean property",
      {setup, fun start_with_schemas/0, fun stop/1,

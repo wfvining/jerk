@@ -8,7 +8,7 @@
 -export([add_schema/1, load_schema/1, remove_schema/1]).
 
 -export([new/2, id/1, attributes/1, get_value/2, set_value/3,
-         is_object/1, is_primitive/1]).
+         is_object/1, is_primitive/1, to_map/1]).
 
 
 -export_type([schemaname/0, object/0, primitive/0,
@@ -56,6 +56,10 @@ load_schema(Path) ->
 -spec remove_schema(SchemaID :: schemaname()) -> ok.
 remove_schema(_SchemaID) ->
     error(not_implemented).
+
+%% @doc convert a jerk term to a map.
+-spec to_map(Term :: jerk:object()) -> map().
+to_map({_, M}) -> M.
 
 %% @doc Create a new `JerkTerm' of the type specified by `SchemaId'. The
 %% values of the attributes are given in `Attributes'. If any required
